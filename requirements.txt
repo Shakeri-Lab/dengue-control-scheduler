@@ -1,0 +1,9 @@
+# Python 3.10+ (tested by the authors on 3.10, 3.11, 3.13). tkinter ships with
+# the standard Windows/macOS installers; on Debian/Ubuntu: sudo apt install python3-tk
+numpy
+scipy
+pandas
+numba
+matplotlib
+# Optional: enables the "Select location on map" button in the GUI
+# tkintermapview
