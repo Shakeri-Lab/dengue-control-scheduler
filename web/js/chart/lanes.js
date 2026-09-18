@@ -95,16 +95,27 @@ export function riskLane(host, data, frame) {
   // Direct labels sit at each curve's peak: the curves converge in December,
   // so end-of-line labels would collide there.
   const peakIndex = peakInWindow(riskBefore, frame);
-  if (peakIndex >= 0) {
-    node.append(peakLabel(frame, peakIndex, y(riskBefore[peakIndex]),
-      `${strings.seriesBaseline} · ${r0(riskBefore[peakIndex])}`, "baseline", top));
-  }
-  if (hasPlan) {
-    const planPeak = peakInWindow(riskAfter, frame);
-    if (planPeak >= 0) {
-      node.append(peakLabel(frame, planPeak, y(riskAfter[planPeak]),
-        `${strings.seriesPlan} · ${r0(riskAfter[planPeak])}`, "plan", top));
+  const planPeak = hasPlan ? peakInWindow(riskAfter, frame) : -1;
+  const baseLabel = peakIndex >= 0
+    ? peakLabel(frame, peakIndex, y(riskBefore[peakIndex]),
+        `${strings.seriesBaseline} · ${r0(riskBefore[peakIndex])}`, "baseline", top)
+    : null;
+  if (baseLabel) node.append(baseLabel);
+
+  if (planPeak >= 0) {
+    let planLabel = peakLabel(frame, planPeak, y(riskAfter[planPeak]),
+      `${strings.seriesPlan} · ${r0(riskAfter[planPeak])}`, "plan", top);
+    // The two peaks are usually close together. Compare the placed labels and,
+    // if they would sit on top of one another, drop the plan's below its curve.
+    if (baseLabel) {
+      const gapY = Math.abs(Number(planLabel.getAttribute("y")) - Number(baseLabel.getAttribute("y")));
+      const gapX = Math.abs(Number(planLabel.getAttribute("x")) - Number(baseLabel.getAttribute("x")));
+      if (gapY < 15 && gapX < 180) {
+        planLabel = peakLabel(frame, planPeak, y(riskAfter[planPeak]),
+          `${strings.seriesPlan} · ${r0(riskAfter[planPeak])}`, "plan", top, true);
+      }
     }
+    node.append(planLabel);
   }
 
   node.append(seasonStrip(frame, riskBefore, hasPlan ? riskAfter : []));
@@ -120,13 +131,13 @@ function peakInWindow(values, frame) {
   return best;
 }
 
-function peakLabel(frame, index, yValue, text, kind, top) {
+function peakLabel(frame, index, yValue, text, kind, top, below = false) {
   const x = frame.x(index);
   const toLeft = x > frame.width * 0.6;
   // Keep the label clear of the season strip above the plot; drop it below the
   // peak rather than let it collide.
   const above = yValue - 8;
-  const y = above < top + 12 ? yValue + 16 : above;
+  const y = below || above < top + 12 ? yValue + 18 : above;
   return svgText({
     x: toLeft ? x - 8 : x + 8,
     y,
@@ -184,8 +195,10 @@ export function scheduleLane(host, data, frame) {
       }));
     }
 
+    // The measure name goes inside the plot: the gutter is sized for axis
+    // numbers, and "Breeding-site removal" would be clipped there.
     node.append(svgText({
-      x: frame.gutter - 8, y: top + rowHeight / 2 + 4, "text-anchor": "end", class: "lane-tag",
+      x: frame.gutter + 4, y: top + 12, "text-anchor": "start", class: "lane-tag",
     }, MEASURE_NAMES[measure]));
 
     if (values.length && peak > 1e-6) {

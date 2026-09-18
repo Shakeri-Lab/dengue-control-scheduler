@@ -84,9 +84,11 @@ main { padding: 0 var(--step-4); }
 /* -- site strip ----------------------------------------------------------- */
 
 .site-strip { padding: var(--step-4) 0; border-bottom: 1px solid var(--grid); }
+/* auto-fit, so the two halves stack rather than force a 556px minimum on a
+   phone. */
 .site-grid {
   display: grid; gap: var(--step-4);
-  grid-template-columns: minmax(280px, 1.2fr) minmax(260px, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 }
 .dropzone {
   border: 1px dashed var(--axis); border-radius: var(--radius);
@@ -148,7 +150,7 @@ button.quiet:hover:not(:disabled) { background: var(--wash); }
   align-items: start;
 }
 @media (max-width: 1023px) {
-  .workspace { grid-template-columns: 1fr; }
+  .workspace { grid-template-columns: minmax(0, 1fr); }
   .rail { order: 2; }
   .workbench { order: 1; }
 }
@@ -172,7 +174,7 @@ button.quiet:hover:not(:disabled) { background: var(--wash); }
 .hero-value { font-size: 44px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
 .hero-sub { color: var(--ink-2); font-size: 14px; }
 
-.tiles { display: grid; gap: var(--step-2); grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.tiles { display: grid; gap: var(--step-2); grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
 .tile {
   border: 1px solid var(--border); border-radius: var(--radius);
   padding: var(--step-3); background: var(--surface);
@@ -258,7 +260,7 @@ button.quiet:hover:not(:disabled) { background: var(--wash); }
 
 .timeline-wrap { margin-top: var(--step-4); }
 .timeline { margin-top: var(--step-2); }
-.tl-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: var(--step-2); margin-bottom: var(--step-1); }
+.tl-row { display: grid; grid-template-columns: minmax(0, 96px) minmax(0, 1fr); align-items: center; gap: var(--step-2); margin-bottom: var(--step-1); }
 .tl-label { font-size: 13px; color: var(--ink-2); text-align: right; }
 .tl-track {
   position: relative; height: 34px; border-radius: var(--radius);
@@ -292,7 +294,8 @@ button.quiet:hover:not(:disabled) { background: var(--wash); }
   text-align: left; padding: 4px var(--step-1);
   border-bottom: 1px solid var(--grid); overflow-wrap: anywhere;
 }
-.plan-table td:last-child, .plan-table th:last-child { width: 72px; }
+.plan-table td:last-child, .plan-table th:last-child { width: 78px; }
+.plan-table td:last-child button { white-space: nowrap; padding: 4px; }
 #data-table th, #data-table td {
   text-align: left; padding: 4px var(--step-2);
   border-bottom: 1px solid var(--grid); white-space: nowrap;
