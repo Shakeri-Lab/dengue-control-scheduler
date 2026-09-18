@@ -3,93 +3,152 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Aedes Control — vector-control schedule simulator</title>
-  <meta name="description" content="Simulate Aedes aegypti population and dengue transmission risk under a larvicide, adulticide and habitat-removal schedule, using your own daily temperature record. Runs entirely in your browser.">
+  <title>Aedes Control planner</title>
+  <meta name="description" content="Test a mosquito-control schedule against your site's temperatures and see how modelled dengue transmission risk changes over the year. Runs entirely in your browser.">
   <link rel="stylesheet" href="web/style.css">
 </head>
 <body>
   <header class="page-head">
-    <h1>Aedes Control</h1>
-    <p class="lede">See how a vector-control schedule changes the <i>Aedes aegypti</i> population and dengue transmission risk at your site, from one year of daily temperature.</p>
-    <p class="privacy">Everything runs in this browser tab. Your files are not uploaded anywhere.</p>
+    <div class="head-main">
+      <h1>Aedes Control planner</h1>
+      <p class="purpose">Test a mosquito-control schedule against your site's temperatures and see how modelled dengue transmission risk changes over the year.</p>
+    </div>
+    <nav class="head-links" aria-label="About this tool">
+      <a href="https://arxiv.org/abs/2605.12441">Paper</a>
+      <a href="https://github.com/Shakeri-Lab/dengue-control-scheduler">Source code</a>
+      <a href="https://github.com/Shakeri-Lab/dengue-control-scheduler/releases/latest">Desktop application</a>
+    </nav>
   </header>
 
   <main>
-    <section aria-labelledby="h-climate">
-      <h2 id="h-climate"><span class="step">1</span> Climate data</h2>
-      <div class="grid two">
-        <div class="field">
-          <label for="temp-file">Daily temperature CSV <span class="req">required</span></label>
+    <section class="site-strip" aria-labelledby="h-site">
+      <h2 id="h-site">Site temperatures</h2>
+      <div class="site-grid">
+        <div id="dropzone" class="dropzone">
+          <label for="temp-file">Choose a CSV file, or drop it here</label>
           <input id="temp-file" type="file" accept=".csv,text/csv">
-          <p class="hint">Two columns, date and value in °C. One full calendar year, 1 January to 31 December, one row per day.</p>
-          <p id="temp-summary" class="summary" hidden></p>
+          <p class="hint">One year of daily average air temperature in °C: a date column and a temperature column, one row per day, 1 January to 31 December.</p>
+          <p class="hint privacy">Your file is read on this device. It is never uploaded.</p>
         </div>
-        <div class="field">
-          <label for="pre-file">Daily precipitation CSV <span class="opt">optional</span></label>
-          <input id="pre-file" type="file" accept=".csv,text/csv">
-          <p class="hint">Metres per day, same year. Precipitation is switched off in this version of the model, so it does not change the results.</p>
-          <p id="pre-summary" class="summary" hidden></p>
+        <div class="site-actions">
+          <button id="use-example" type="button">Use the example</button>
+          <button id="template" type="button" class="quiet">Download a blank template</button>
+          <details class="paste">
+            <summary>Paste from a spreadsheet</summary>
+            <textarea id="paste-area" rows="4" aria-label="Paste dates and temperatures"
+              placeholder="2026-01-01, 22.3&#10;2026-01-02, 22.8"></textarea>
+            <button id="paste-apply" type="button">Use pasted data</button>
+          </details>
+          <p id="site-summary" class="site-summary"></p>
+          <p id="example-tag" class="example-tag" hidden>Example — not your site</p>
         </div>
       </div>
-      <p><button id="use-sample" type="button" class="link">Use the sample files shipped with the code (2026)</button></p>
+      <p id="message" class="message" hidden></p>
     </section>
 
-    <section aria-labelledby="h-plan">
-      <h2 id="h-plan"><span class="step">2</span> Control plan</h2>
-      <p class="hint">Leave a measure without dates to leave it out. Dates must fall in the year of your temperature file<span id="year-note"></span>.</p>
-      <div class="grid three" id="plan"></div>
-    </section>
+    <div id="workspace" class="workspace" hidden>
+      <aside class="rail" aria-labelledby="h-settings">
+        <h2 id="h-settings">Treatment settings</h2>
+        <p class="hint">These apply to every application of that measure in the plan.</p>
+        <div id="measure-settings"></div>
 
-    <section aria-labelledby="h-run">
-      <h2 id="h-run"><span class="step">3</span> Run</h2>
-      <div class="run-row">
-        <button id="run" type="button" class="primary" disabled>Run simulation</button>
-        <p id="status" class="status" role="status" aria-live="polite">Starting…</p>
+        <h2 id="h-plan">Control plan</h2>
+        <div id="plan-table" class="plan-table-host" aria-labelledby="h-plan"></div>
+        <p class="hint">Overlapping applications are allowed; the model adds their effects.</p>
+        <div class="row-actions">
+          <button id="undo" type="button" class="quiet" disabled>Undo</button>
+          <button id="redo" type="button" class="quiet" disabled>Redo</button>
+        </div>
+      </aside>
+
+      <div class="workbench">
+        <div id="outcomes" class="outcomes" aria-live="off"></div>
+
+        <div id="status-row" class="status-row">
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+          <div class="status-actions">
+            <label class="toggle"><input id="auto-update" type="checkbox" checked> Update automatically</label>
+            <button id="update-now" type="button" class="quiet">Update results</button>
+          </div>
+        </div>
+
+        <section id="results" class="results" aria-labelledby="h-canvas" hidden>
+          <div class="canvas-head">
+            <h2 id="h-canvas">Modelled year</h2>
+            <div class="views" role="group" aria-label="Time range">
+              <button type="button" data-view="year" aria-pressed="true">Full year</button>
+              <button type="button" data-view="season" aria-pressed="false">Risk season</button>
+            </div>
+          </div>
+          <p class="hint r0-note">R0 is a modelled index of how easily dengue could spread if the virus were introduced that day. Above 1, spread can sustain itself. It is not a prediction of cases.</p>
+
+          <div class="legend">
+            <span><span class="key key-baseline"></span>Without control</span>
+            <span><span class="key key-plan"></span>With this plan</span>
+            <span><span class="key key-band"></span>Reduction from this plan</span>
+          </div>
+
+          <div id="canvas" class="canvas" tabindex="0"
+               aria-label="Modelled year. Use the left and right arrow keys to read values; square brackets jump to the next crossing of R0 = 1."></div>
+
+          <div class="timeline-wrap">
+            <h3>Schedule</h3>
+            <p id="tl-hint" class="hint">Click a row to add an application. Press Enter on one for options; arrow keys move it by a day, Shift by a week, Delete removes it.</p>
+            <div id="timeline" class="timeline"></div>
+          </div>
+
+          <details class="table-view">
+            <summary>Daily values as a table</summary>
+            <div class="table-scroll"><table id="data-table"></table></div>
+          </details>
+        </section>
+
+        <section id="exports" class="exports" aria-labelledby="h-exports" hidden>
+          <h2 id="h-exports">Take it away</h2>
+          <div class="export-fields">
+            <label for="site-name">Site name</label>
+            <input id="site-name" type="text" placeholder="e.g. Miami-Dade County">
+            <label for="prepared-by">Prepared by</label>
+            <input id="prepared-by" type="text" placeholder="Name or unit">
+          </div>
+          <div class="row-actions">
+            <button id="print" type="button">Print or save as PDF</button>
+            <button id="export-schedule" type="button" class="quiet">Schedule (CSV)</button>
+            <button id="export-daily" type="button" class="quiet">Daily results (CSV)</button>
+            <button id="export-figure" type="button" class="quiet">Figure (PNG)</button>
+            <button id="export-summary" type="button" class="quiet">Copy summary text</button>
+            <button id="export-desktop" type="button" class="quiet">Date files for the desktop app</button>
+            <button id="export-metadata" type="button" class="quiet">Run metadata (JSON)</button>
+          </div>
+        </section>
       </div>
-      <p id="error" class="error" role="alert" hidden></p>
-    </section>
+    </div>
 
-    <section id="results" aria-labelledby="h-results" hidden>
-      <h2 id="h-results">Results</h2>
-      <div class="tiles" id="tiles"></div>
-
-      <figure class="chart-card">
-        <figcaption>
-          <h3>Transmission risk (R0)</h3>
-          <p class="hint">Above 1, an introduced infection can spread.</p>
-        </figcaption>
-        <div class="legend" id="legend-risk"></div>
-        <div class="chart" id="chart-risk"></div>
-      </figure>
-
-      <figure class="chart-card">
-        <figcaption>
-          <h3>Adult female mosquitoes</h3>
-          <p class="hint">Model population, scaled to a reference city of 10 million people.</p>
-        </figcaption>
-        <div class="legend" id="legend-pop"></div>
-        <div class="chart" id="chart-pop"></div>
-      </figure>
-
-      <div class="downloads">
-        <button id="dl-csv" type="button">Download results (CSV)</button>
-        <button id="dl-meta" type="button">Download run metadata (JSON)</button>
-      </div>
-
-      <details class="table-view">
-        <summary>Daily values as a table</summary>
-        <div class="table-scroll"><table id="data-table"></table></div>
+    <section class="caveats" aria-labelledby="h-caveats">
+      <h2 id="h-caveats">What this is</h2>
+      <p class="limitations">This is a planning aid. It shows how a schedule changes modelled mosquito numbers and transmission suitability for the temperatures you supplied. It does not forecast cases or outbreaks. The comparison between plans is more reliable than the absolute level of R0. Use it alongside local surveillance and judgement.</p>
+      <details>
+        <summary>About this model</summary>
+        <dl class="about">
+          <dt>Includes</dt>
+          <dd>Temperature-dependent development, survival and egg-laying of <i>Aedes aegypti</i> from egg to adult; the effect of larvicide, adulticide and breeding-site removal on those stages; a temperature-dependent transmission index based on adult mosquitoes per person.</dd>
+          <dt>Leaves out</dt>
+          <dd>Rainfall (not used in this version). Local breeding-site density — the same reference value per person is used everywhere. Human immunity, imported cases and reported case counts. Insecticide resistance, coverage and operational limits. Cost. Year-to-year change: the model assumes earlier years had the same temperatures.</dd>
+          <dt>Finding the best dates</dt>
+          <dd>This page tests the dates you choose. The desktop application can search for the dates that lower average R0 most; that search takes 30–40 minutes.</dd>
+          <dt>Papers</dt>
+          <dd>A. Vajdi, L. W. Cohnstaedt, C. M. Scoglio, H. Shakeri. <i>Optimal Scheduling of Dengue Vector Control.</i> arXiv:2605.12441, 2026.<br>
+              A. Vajdi, L. W. Cohnstaedt, C. M. Scoglio. <i>Assessing dengue risk globally using non-Markovian models.</i> Journal of Theoretical Biology 591:111865, 2024.</dd>
+        </dl>
       </details>
     </section>
   </main>
 
   <footer>
-    <p><b>What this page does.</b> It runs the fixed-schedule mode of the Aedes Control model: the same Python files as the desktop application, executed in your browser. The first visit downloads the Python runtime (about 35 MB); a run then takes roughly half a minute to a minute.</p>
-    <p><b>What it does not do.</b> Searching for the best dates (Optimize mode) takes tens of minutes of compiled code and is only in the desktop application. Location lookup from the worldwide climate grids is also desktop-only; here you bring your own CSV.</p>
-    <p>Model and method: Vajdi, Cohnstaedt, Scoglio, Shakeri, <i>Optimal Scheduling of Dengue Vector Control</i>, arXiv:2605.12441. Source code: <a href="https://github.com/Shakeri-Lab/dengue-control-scheduler">Shakeri-Lab/dengue-control-scheduler</a>.</p>
+    <p>The model runs in this browser tab using the same Python code as the desktop application. Nothing you load is sent anywhere.</p>
   </footer>
 
-  <div id="tooltip" class="tooltip" hidden></div>
-  <script src="web/app.js" defer></script>
+  <div id="live" class="visually-hidden" role="status" aria-live="polite"></div>
+  <script type="module" src="web/js/main.js"></script>
 </body>
 </html>

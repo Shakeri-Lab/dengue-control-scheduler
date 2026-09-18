@@ -1,7 +1,20 @@
 /* Runs the repository's unmodified Python model in the browser with Pyodide.
-   Nothing is uploaded: the CSV text is handed to Python inside this worker. */
+   Nothing is uploaded: the CSV text is handed to Python inside this worker.
 
-const PYODIDE_BASE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
+   Protocol v2
+     in   {v:2, type:"climate",  id, tempCsv}
+          {v:2, type:"simulate", id, tempCsv, settings, plan}
+     out  {type:"boot", file, fromCache, done, total}
+          {type:"ready", protocol, modelSha, memo, versions}
+          {type:"climate", id, payload}
+          {type:"progress", id, solve, cached, frac}
+          {type:"result", id, payload}
+          {type:"fatal", message}
+*/
+
+const PROTOCOL = 2;
+const PYODIDE_VERSION = "0.27.7";
+const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
 importScripts(PYODIDE_BASE + "pyodide.js");
 
 // Model sources are fetched from the repository root, so the page always runs
@@ -15,79 +28,16 @@ const MODEL_FILES = [
 ];
 const SHIM_FILES = ["numba/__init__.py", "numba/typed.py"];
 
-const DRIVER = `
-import json, os, shutil, sys, time
-
-APP = "/app"
-sys.path.insert(0, APP + "/pyshim")
-sys.path.insert(0, APP)
-os.chdir(APP)
-
-
-def run_fixed(temp_csv, pre_csv, params_json, progress):
-    import pandas as pd
-    import Run_AEDES_AEGYPTI as model
-    from LocationSeriesInput import load_annual_series_csv
-
-    p = json.loads(params_json)
-    try:
-        with open("user_temperature.csv", "w", encoding="utf-8") as f:
-            f.write(temp_csv)
-        if pre_csv:
-            with open("user_precipitation.csv", "w", encoding="utf-8") as f:
-                f.write(pre_csv)
-        else:
-            # The loader requires a precipitation series; an all-zero year on
-            # the temperature calendar satisfies it.
-            dates, _ = load_annual_series_csv("user_temperature.csv", return_dates=True)
-            pd.DataFrame(
-                {"date": dates.strftime("%Y-%m-%d"), "precipitation": 0.0}
-            ).to_csv("user_precipitation.csv", index=False)
-
-        out = "results"
-        shutil.rmtree(out, ignore_errors=True)
-
-        # Report which of the three ODE solves is running (warm-up, without
-        # control, with control) without touching the model source.
-        original = model.solve_ivp
-        state = {"n": 0}
-
-        def reporting_solve_ivp(*args, **kwargs):
-            state["n"] += 1
-            progress(state["n"])
-            return original(*args, **kwargs)
-
-        model.solve_ivp = reporting_solve_ivp
-        started = time.time()
-        try:
-            model.Run_AEDES_AEGYPTI(
-                len_ins=p["len_ins"], is_ef=p["is_ef"],
-                len_lr=p["len_lr"], ls_ef=p["ls_ef"],
-                len_cr=p["len_cr"], cl_ef=p["cl_ef"],
-                larvicide_dates=p["larvicide_dates"],
-                insecticide_dates=p["insecticide_dates"],
-                habitat_dates=p["habitat_dates"],
-                adtemp="user_temperature.csv",
-                adpre="user_precipitation.csv",
-                adsave=out,
-            )
-        finally:
-            model.solve_ivp = original
-
-        files = {}
-        for name in sorted(os.listdir(out)):
-            with open(os.path.join(out, name), encoding="utf-8") as f:
-                files[name] = f.read()
-        return json.dumps({"ok": True, "seconds": time.time() - started, "files": files})
-    except Exception as error:  # surfaced to the page verbatim
-        return json.dumps({"ok": False, "kind": type(error).__name__, "message": str(error)})
-`;
-
 let pyodide = null;
-let runFixed = null;
+let session = null;
+let driver = null;
+let modelSha = null;
+let memoEnabled = false;
 
-function status(message) {
-  self.postMessage({ type: "status", message });
+async function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function fetchText(url) {
@@ -96,23 +46,78 @@ async function fetchText(url) {
   return response.text();
 }
 
-async function init() {
-  status("Downloading the Python runtime (first visit only, about 35 MB)…");
-  pyodide = await loadPyodide({ indexURL: PYODIDE_BASE });
-  status("Loading NumPy, SciPy and pandas…");
-  await pyodide.loadPackage(["numpy", "scipy", "pandas"]);
+/* Pyodide 0.27 reports no byte progress, so count files instead: the resource
+   timeline gives one entry per download, and transferSize 0 means it came from
+   the browser cache. */
+function watchDownloads() {
+  const seen = new Set();
+  let observer = null;
+  try {
+    observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (!entry.name.startsWith(PYODIDE_BASE)) continue;
+        const file = entry.name.slice(PYODIDE_BASE.length);
+        if (seen.has(file)) continue;
+        seen.add(file);
+        self.postMessage({
+          type: "boot", file, fromCache: entry.transferSize === 0, done: seen.size,
+        });
+      }
+    });
+    observer.observe({ type: "resource", buffered: true });
+  } catch (error) {
+    observer = null;   // no resource timing: boot runs without progress
+  }
+  return () => observer && observer.disconnect();
+}
 
-  status("Loading the mosquito model…");
+async function init() {
+  const stopWatching = watchDownloads();
+  pyodide = await loadPyodide({
+    indexURL: PYODIDE_BASE,
+    packages: ["numpy", "scipy", "pandas"],
+  });
+
   pyodide.FS.mkdirTree("/app/pyshim/numba");
+  pyodide.FS.mkdirTree("/app/py");
+  const sources = {};
   for (const name of MODEL_FILES) {
-    pyodide.FS.writeFile(`/app/${name}`, await fetchText(`../${name}`));
+    sources[name] = await fetchText(`../${name}`);
+    pyodide.FS.writeFile(`/app/${name}`, sources[name]);
   }
   for (const name of SHIM_FILES) {
     pyodide.FS.writeFile(`/app/pyshim/${name}`, await fetchText(`pyshim/${name}`));
   }
-  pyodide.runPython(DRIVER);
-  runFixed = pyodide.globals.get("run_fixed");
-  self.postMessage({ type: "ready" });
+  pyodide.FS.writeFile("/app/py/driver.py", await fetchText("py/driver.py"));
+
+  // Memoization is enabled only for the exact model files it was verified
+  // against; any change falls back to plain, uncached runs.
+  const lock = JSON.parse(await fetchText("model.lock.json"));
+  const hashes = {};
+  for (const name of MODEL_FILES) hashes[name] = await sha256Hex(sources[name]);
+  memoEnabled = MODEL_FILES.every((name) => lock.files[name] === hashes[name]);
+  modelSha = (await sha256Hex(MODEL_FILES.map((n) => hashes[n]).join(""))).slice(0, 12);
+
+  // Import here, not on the first run: the scipy import alone takes seconds, so
+  // "ready" should mean ready.
+  pyodide.runPython(`
+import sys
+sys.path.insert(0, "/app/pyshim")
+sys.path.insert(0, "/app/py")
+sys.path.insert(0, "/app")
+import driver
+`);
+  driver = pyodide.pyimport("driver");
+  session = driver.Session("/app/run", memoEnabled);
+
+  stopWatching();
+  self.postMessage({
+    type: "ready",
+    protocol: PROTOCOL,
+    modelSha,
+    memo: memoEnabled,
+    versions: { pyodide: PYODIDE_VERSION },
+  });
 }
 
 const ready = init().catch((error) => {
@@ -120,19 +125,32 @@ const ready = init().catch((error) => {
   throw error;
 });
 
+function fail(id, kind, error) {
+  self.postMessage({
+    type: kind,
+    id,
+    payload: { ok: false, kind: "RuntimeError", message: String(error && error.message ? error.message : error) },
+  });
+}
+
 self.onmessage = async (event) => {
   const request = event.data;
-  if (request.type !== "run") return;
+  if (!request || request.v !== PROTOCOL) return;
   try {
     await ready;
-    const progress = (step) => self.postMessage({ type: "progress", id: request.id, step });
-    const raw = runFixed(request.tempCsv, request.preCsv || "", JSON.stringify(request.params), progress);
-    self.postMessage({ type: "result", id: request.id, payload: JSON.parse(raw) });
+    if (request.type === "climate") {
+      const raw = driver.load_climate_json(session, request.tempCsv, "");
+      self.postMessage({ type: "climate", id: request.id, payload: JSON.parse(raw) });
+    } else if (request.type === "simulate") {
+      const progress = (solve, cached, frac) =>
+        self.postMessage({ type: "progress", id: request.id, solve, cached, frac });
+      const raw = driver.run_json(
+        session, request.tempCsv, "",
+        JSON.stringify(request.settings), JSON.stringify(request.plan), progress,
+      );
+      self.postMessage({ type: "result", id: request.id, payload: JSON.parse(raw) });
+    }
   } catch (error) {
-    self.postMessage({
-      type: "result",
-      id: request.id,
-      payload: { ok: false, kind: "RuntimeError", message: String(error && error.message ? error.message : error) },
-    });
+    fail(request.id, request.type === "climate" ? "climate" : "result", error);
   }
 };

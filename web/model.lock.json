@@ -1,0 +1,10 @@
+{
+  "comment": "Memoization in web/py/driver.py is enabled only when the model files hash to these values. Regenerate with web/tools/make_lock.py after tests/test_web_memo.py passes.",
+  "files": {
+    "Dif_functions.py": "f35c2854c215fab1f75700d8c06371eec8a94c2976cc3a7e81fb027d7959e598",
+    "LocationSeriesInput.py": "ed472fdad2ac43210f789dad3d89fca0b624230040903f860b267ce9add66272",
+    "MosquitoRates.py": "da13b57ee680c3575f0424e05a4b2cab7b73ac88f942fe2b0d9f62eb84071bfb",
+    "Run_AEDES_AEGYPTI.py": "96e4bb103b467b0e4f49cfbe2a8633956e39d9ee337a20cf2ee25d75f74a7ca5",
+    "cord_to_CRofland.py": "273e5148c0d6a14ddd1914b37875e599925c5677484c52dfd7781141d8442878"
+  }
+}
