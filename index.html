@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aedes Control — vector-control schedule simulator</title>
+  <meta name="description" content="Simulate Aedes aegypti population and dengue transmission risk under a larvicide, adulticide and habitat-removal schedule, using your own daily temperature record. Runs entirely in your browser.">
+  <link rel="stylesheet" href="web/style.css">
+</head>
+<body>
+  <header class="page-head">
+    <h1>Aedes Control</h1>
+    <p class="lede">See how a vector-control schedule changes the <i>Aedes aegypti</i> population and dengue transmission risk at your site, from one year of daily temperature.</p>
+    <p class="privacy">Everything runs in this browser tab. Your files are not uploaded anywhere.</p>
+  </header>
+
+  <main>
+    <section aria-labelledby="h-climate">
+      <h2 id="h-climate"><span class="step">1</span> Climate data</h2>
+      <div class="grid two">
+        <div class="field">
+          <label for="temp-file">Daily temperature CSV <span class="req">required</span></label>
+          <input id="temp-file" type="file" accept=".csv,text/csv">
+          <p class="hint">Two columns, date and value in °C. One full calendar year, 1 January to 31 December, one row per day.</p>
+          <p id="temp-summary" class="summary" hidden></p>
+        </div>
+        <div class="field">
+          <label for="pre-file">Daily precipitation CSV <span class="opt">optional</span></label>
+          <input id="pre-file" type="file" accept=".csv,text/csv">
+          <p class="hint">Metres per day, same year. Precipitation is switched off in this version of the model, so it does not change the results.</p>
+          <p id="pre-summary" class="summary" hidden></p>
+        </div>
+      </div>
+      <p><button id="use-sample" type="button" class="link">Use the sample files shipped with the code (2026)</button></p>
+    </section>
+
+    <section aria-labelledby="h-plan">
+      <h2 id="h-plan"><span class="step">2</span> Control plan</h2>
+      <p class="hint">Leave a measure without dates to leave it out. Dates must fall in the year of your temperature file<span id="year-note"></span>.</p>
+      <div class="grid three" id="plan"></div>
+    </section>
+
+    <section aria-labelledby="h-run">
+      <h2 id="h-run"><span class="step">3</span> Run</h2>
+      <div class="run-row">
+        <button id="run" type="button" class="primary" disabled>Run simulation</button>
+        <p id="status" class="status" role="status" aria-live="polite">Starting…</p>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+    </section>
+
+    <section id="results" aria-labelledby="h-results" hidden>
+      <h2 id="h-results">Results</h2>
+      <div class="tiles" id="tiles"></div>
+
+      <figure class="chart-card">
+        <figcaption>
+          <h3>Transmission risk (R0)</h3>
+          <p class="hint">Above 1, an introduced infection can spread.</p>
+        </figcaption>
+        <div class="legend" id="legend-risk"></div>
+        <div class="chart" id="chart-risk"></div>
+      </figure>
+
+      <figure class="chart-card">
+        <figcaption>
+          <h3>Adult female mosquitoes</h3>
+          <p class="hint">Model population, scaled to a reference city of 10 million people.</p>
+        </figcaption>
+        <div class="legend" id="legend-pop"></div>
+        <div class="chart" id="chart-pop"></div>
+      </figure>
+
+      <div class="downloads">
+        <button id="dl-csv" type="button">Download results (CSV)</button>
+        <button id="dl-meta" type="button">Download run metadata (JSON)</button>
+      </div>
+
+      <details class="table-view">
+        <summary>Daily values as a table</summary>
+        <div class="table-scroll"><table id="data-table"></table></div>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <p><b>What this page does.</b> It runs the fixed-schedule mode of the Aedes Control model: the same Python files as the desktop application, executed in your browser. The first visit downloads the Python runtime (about 35 MB); a run then takes roughly half a minute to a minute.</p>
+    <p><b>What it does not do.</b> Searching for the best dates (Optimize mode) takes tens of minutes of compiled code and is only in the desktop application. Location lookup from the worldwide climate grids is also desktop-only; here you bring your own CSV.</p>
+    <p>Model and method: Vajdi, Cohnstaedt, Scoglio, Shakeri, <i>Optimal Scheduling of Dengue Vector Control</i>, arXiv:2605.12441. Source code: <a href="https://github.com/Shakeri-Lab/dengue-control-scheduler">Shakeri-Lab/dengue-control-scheduler</a>.</p>
+  </footer>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+  <script src="web/app.js" defer></script>
+</body>
+</html>

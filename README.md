@@ -41,6 +41,19 @@ pip install -r requirements.txt
 install `python3-tk`. `tkintermapview` is optional (map-based location picker; it
 downloads OpenStreetMap tiles).
 
+## Web version
+
+`index.html` is a browser version of the **Fixed schedule** mode for users who bring their
+own climate CSV. It runs the same Python files as the desktop application, unmodified,
+inside the browser with [Pyodide](https://pyodide.org) (`web/worker.js`); the CSV never
+leaves the user's computer. Pyodide has no Numba, so `web/pyshim/numba/` provides a
+stand-in that runs the `@njit` functions as plain NumPy — results agree with the desktop
+run to solver tolerance (about 5e-5 relative), and a run takes roughly 20–40 s.
+Optimize mode and the worldwide climate grids are desktop-only.
+
+Serve the repository root over HTTP to try it locally (`python -m http.server`, then open
+`http://localhost:8000`), or publish the repository root with GitHub Pages.
+
 ## Climate data (required for location lookup)
 
 The two worldwide climate grids are too large for git (GitHub rejects files over
