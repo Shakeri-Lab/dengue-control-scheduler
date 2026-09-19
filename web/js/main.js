@@ -94,9 +94,14 @@ function render(state) {
   const hasClimate = Boolean(state.climate);
   $("workspace").hidden = !hasClimate;
   $("example-tag").hidden = !(state.climate && state.climate.isExample);
+  $("use-example").disabled = Boolean(state.loadingClimate);
 
   if (hasClimate) {
     $("site-summary").textContent = state.climate.summary || "";
+  } else if (state.loadingClimate) {
+    $("site-summary").textContent = state.loadingClimate;
+  }
+  if (hasClimate) {
     if (!timeline) setupEditors();
     timeline.render(state.plan, state.settings, state.climate.dates);
     renderPlanTable($("plan-table"), state.plan, state.settings, {
@@ -154,7 +159,11 @@ function showProgress(message) {
 
 function statusText(state) {
   if (state.status === "booting") {
-    return state.bootFiles ? strings.bootProgress(state.bootFiles) : strings.bootStart;
+    const base = state.bootFiles ? strings.bootProgress(state.bootFiles) : strings.bootStart;
+    // With the precomputed example on screen, say what the wait buys.
+    if (state.result) return `${base} ${strings.exampleWhileLoading}`;
+    if (state.loadingClimate) return `${base} Your file will be used as soon as it is ready.`;
+    return base;
   }
   if (state.status === "failed") return "";
   if (state.pending) {
@@ -170,7 +179,7 @@ function statusText(state) {
 
 function requestRun({ immediate = false } = {}) {
   const state = getState();
-  if (!state.climate) return;
+  if (!state.climate || !state.climate.csv) return;
   clearTimeout(debounce);
   const run = () => {
     const current = getState();
@@ -337,13 +346,22 @@ async function useClimateText(text, name, options = {}) {
 
   const csv = toCsv(parsed.rows);
   pendingClimate = { csv, name, parsed, isExample: Boolean(options.isExample) };
-  set({ message: null });
+  // Acknowledge the file at once. The model may still be downloading, and a
+  // click that does nothing visible for half a minute reads as broken.
+  set({
+    message: null,
+    loadingClimate: strings.fileSummary(
+      name, parsed.year, parsed.stats.days,
+      parsed.stats.min.toFixed(1), parsed.stats.max.toFixed(1), parsed.stats.mean.toFixed(1),
+    ),
+  });
   engine.submit({ type: "climate", tempCsv: csv }, `climate:${name}:${parsed.rows.length}`);
 }
 
 function onClimateLoaded(payload) {
   if (!payload.ok) {
-    set({ message: { kind: "error", text: "This file could not be used.", detail: payload.message } });
+    set({ loadingClimate: null,
+          message: { kind: "error", text: "This file could not be used.", detail: payload.message } });
     pendingClimate = null;
     return;
   }
@@ -372,7 +390,7 @@ function onClimateLoaded(payload) {
       measure, plan[measure].map((date) => `${climate.year}${date.slice(4)}`)
         .filter((date) => climate.dates.includes(date)),
     ]));
-    set({ climate, result: null, message: {
+    set({ climate, result: null, loadingClimate: null, message: {
       kind: "info", text: strings.yearChanged(previousYear, climate.year),
       actions: [
         { label: strings.movePlan(climate.year),
@@ -385,7 +403,7 @@ function onClimateLoaded(payload) {
     return;
   }
 
-  set({ climate, result: null });
+  set({ climate, result: null, loadingClimate: null });
   canvas.frame.setDates(climate.dates);
   requestRun({ immediate: true });
 }
@@ -508,13 +526,6 @@ function wireInputs() {
   $("use-example").onclick = async () => {
     const text = await fetch("sample_climate_csv/sample_temperature_2026.csv").then((r) => r.text());
     await useClimateText(text, "sample_temperature_2026.csv", { isExample: true });
-    if (isEmptyPlan(getState().plan)) {
-      edit({ plan: {
-        larvicide: ["2026-06-25"],
-        adulticide: ["2026-07-20", "2026-08-05"],
-        habitat: ["2026-07-09"],
-      } }, "example plan");
-    }
   };
 
   $("template").onclick = () => {
@@ -551,10 +562,41 @@ function wireInputs() {
   $("canvas").addEventListener("keydown", (event) => canvas.handleKey(event));
 }
 
+/** Show the precomputed example straight away, so the page has a result on it
+    while Python downloads. Replaced by a live run as soon as one lands. */
+async function showPrecomputedExample() {
+  try {
+    const [example, csv] = await Promise.all([
+      fetch("web/example.json").then((r) => r.json()),
+      fetch("sample_climate_csv/sample_temperature_2026.csv").then((r) => r.text()),
+    ]);
+    if (getState().climate || pendingClimate) return;   // the user got there first
+    const series = example.series;
+    set({
+      climate: {
+        // The real CSV is carried too, so editing the plan runs the live model
+        // against the same data rather than needing the file to be chosen again.
+        name: example.name, csv, key: example.climateKey, year: example.year,
+        dates: series.dates, temperature: series.temperature,
+        isExample: true, precomputed: true,
+        summary: `${example.name} · ${example.year} · ${series.dates.length} days`,
+      },
+      settings: example.settings,
+      plan: example.plan,
+      result: { key: "example", series: { ...series, larvaeBefore: [], larvaeAfter: [], applied: example.plan }, timing: null },
+    });
+    canvas.frame.setDates(series.dates);
+    render(getState());
+  } catch (error) {
+    // No example is not an error: the page still works once the model loads.
+  }
+}
+
 function boot() {
   canvas = new Canvas($("canvas"));
   wireInputs();
   wireExports();
+  showPrecomputedExample();
 
   engine = new Engine("web/worker.js", {
     onBoot: ({ done }) => set({ bootFiles: done }),
