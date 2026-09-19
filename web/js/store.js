@@ -27,6 +27,7 @@ const initialState = {
   result: null,                 // current result, or null while none is valid
   pending: false,
   bootFiles: 0,
+  loadingClimate: null,         // file summary shown before the model validates it
   message: null,                // {kind, text, detail}
   view: "year",                 // year | season
   autoUpdate: true,

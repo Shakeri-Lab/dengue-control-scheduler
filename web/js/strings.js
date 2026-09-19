@@ -31,6 +31,7 @@ export const strings = {
   bootStart: "Preparing the model on this device. The first visit downloads about 30 MB; " +
     "later visits start faster. You can explore the example meanwhile.",
   bootProgress: (done) => `Preparing the model on this device — ${done} files loaded.`,
+  exampleWhileLoading: "The example below is precomputed; you can change the plan once it is ready.",
   ready: "Model ready.",
   readyMemo: "Model ready. Changes to the plan update the results in a few seconds.",
   firstRun: "Calculating the year without control — about 30 seconds.",
