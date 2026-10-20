@@ -89,6 +89,8 @@ export function summaryText(data, site) {
   }
   lines.push("");
   lines.push(strings.limitations);
+  lines.push("");
+  lines.push(`Method: ${strings.citation}`);
   return `${lines.join("\n")}\n`;
 }
 

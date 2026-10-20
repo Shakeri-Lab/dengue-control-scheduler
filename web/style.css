@@ -337,6 +337,7 @@ button.quiet:hover:not(:disabled) { background: var(--wash); }
 .about dd { margin: var(--step-1) 0 0; color: var(--ink-2); }
 
 footer { padding: var(--step-4); border-top: 1px solid var(--grid); color: var(--ink-2); font-size: 13px; }
+footer .cite { margin: var(--step-2) 0 0; max-width: 90ch; }
 
 [hidden] { display: none !important; }
 

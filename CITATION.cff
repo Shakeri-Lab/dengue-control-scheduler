@@ -1,0 +1,66 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper it accompanies."
+title: "Aedes Control: optimal scheduling of dengue vector control"
+abstract: >-
+  Simulation and adjoint-based optimal scheduling of Aedes aegypti vector
+  control (larvicide, adulticide, breeding-site removal), driven by a
+  temperature-dependent, non-Markovian model of the mosquito life cycle.
+  Includes a desktop application and a browser planner that runs the same
+  model locally.
+type: software
+authors:
+  - family-names: Vajdi
+    given-names: Aram
+    affiliation: "School of Data Science, University of Virginia"
+  - family-names: Cohnstaedt
+    given-names: "Lee W."
+    affiliation: "USDA, Agricultural Research Service"
+  - family-names: Scoglio
+    given-names: "Caterina M."
+    affiliation: "Department of Electrical and Computer Engineering, Kansas State University"
+  - family-names: Shakeri
+    given-names: Heman
+    affiliation: "School of Data Science, University of Virginia"
+repository-code: "https://github.com/Shakeri-Lab/dengue-control-scheduler"
+url: "https://shakeri-lab.github.io/dengue-control-scheduler/"
+license-url: "https://github.com/Shakeri-Lab/dengue-control-scheduler"
+keywords:
+  - dengue
+  - Aedes aegypti
+  - vector control
+  - optimal control
+  - non-Markovian models
+preferred-citation:
+  type: article
+  title: "Optimal scheduling of dengue vector control"
+  authors:
+    - family-names: Vajdi
+      given-names: Aram
+    - family-names: Cohnstaedt
+      given-names: "Lee W."
+    - family-names: Scoglio
+      given-names: "Caterina M."
+    - family-names: Shakeri
+      given-names: Heman
+  journal: "Journal of Theoretical Biology"
+  volume: 637
+  start: 112617
+  year: 2027
+  month: 1
+  issn: "0022-5193"
+  doi: "10.1016/j.jtbi.2026.112617"
+references:
+  - type: article
+    title: "Assessing dengue risk globally using non-Markovian models"
+    authors:
+      - family-names: Vajdi
+        given-names: Aram
+      - family-names: Cohnstaedt
+        given-names: "Lee W."
+      - family-names: Scoglio
+        given-names: "Caterina M."
+    journal: "Journal of Theoretical Biology"
+    volume: 591
+    start: 111865
+    year: 2024
+    doi: "10.1016/j.jtbi.2024.111865"

@@ -148,6 +148,9 @@ export const strings = {
     "This page tests the dates you choose. The desktop application can search for the dates " +
     "that lower average R0 most; that search takes 30–40 minutes.",
   stamp: (sha, date) => `Model code ${sha} · computed in your browser · ${date}`,
+  citation:
+    "Vajdi A, Cohnstaedt LW, Scoglio CM, Shakeri H. Optimal scheduling of dengue vector " +
+    "control. Journal of Theoretical Biology 637:112617 (2027). doi:10.1016/j.jtbi.2026.112617",
 
   // Live region
   announceAdded: (measure, date, until) =>

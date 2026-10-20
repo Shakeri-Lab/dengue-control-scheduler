@@ -6,8 +6,9 @@ temperature-dependent, non-Markovian model of the mosquito life cycle.
 
 Code accompanying:
 
-> A. Vajdi, L. W. Cohnstaedt, C. M. Scoglio, H. Shakeri. *Optimal Scheduling of Dengue
-> Vector Control.* arXiv:2605.12441, 2026.
+> A. Vajdi, L. W. Cohnstaedt, C. M. Scoglio, H. Shakeri. *Optimal scheduling of dengue
+> vector control.* Journal of Theoretical Biology **637**:112617, 2027.
+> <https://doi.org/10.1016/j.jtbi.2026.112617>
 
 The population model is from:
 
@@ -136,6 +137,29 @@ that is not distributed. A fixed-schedule run takes well under a minute; an opti
 
 Each run writes plain-text series (`dates.txt`, `population_*.txt`, `risk_*.txt`,
 `*_application_dates.txt`) and `run_metadata.json` into the chosen results folder.
+
+## Citing
+
+If you use this software, please cite the paper it accompanies:
+
+> Vajdi A, Cohnstaedt LW, Scoglio CM, Shakeri H. Optimal scheduling of dengue vector
+> control. *Journal of Theoretical Biology* **637**:112617 (2027).
+> doi:[10.1016/j.jtbi.2026.112617](https://doi.org/10.1016/j.jtbi.2026.112617)
+
+```bibtex
+@article{Vajdi2027DengueScheduling,
+  title   = {Optimal scheduling of dengue vector control},
+  author  = {Vajdi, Aram and Cohnstaedt, Lee W. and Scoglio, Caterina M. and Shakeri, Heman},
+  journal = {Journal of Theoretical Biology},
+  volume  = {637},
+  pages   = {112617},
+  year    = {2027},
+  issn    = {0022-5193},
+  doi     = {10.1016/j.jtbi.2026.112617}
+}
+```
+
+`CITATION.cff` carries the same record, so GitHub's "Cite this repository" button works.
 
 ## Acknowledgment
 
