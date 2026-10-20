@@ -1,0 +1,164 @@
+{
+ "generated": "2026-10-20",
+ "title": "How the model has done at real sites",
+ "summary": "An independent retrospective check, not part of the published paper and not peer reviewed. Each site was run on the temperature it actually had, with no control plan, and compared with locally acquired cases reported by health authorities.",
+ "claim": "Where the mosquito is established, the model locates the receptive window and leads reported cases by a few weeks. It does not predict which places or years will have an outbreak.",
+ "caveat": "Run on a ten-year temperature climatology instead \u2014 the only input knowable before a season starts \u2014 the model stayed below the threshold at both Florida outbreak sites. Treat the level of R0 as uncalibrated and use the timing, not the threshold.",
+ "sources": [
+  {
+   "label": "Florida Department of Health, weekly arbovirus surveillance",
+   "url": "https://www.floridahealth.gov/diseases-and-conditions/mosquito-borne-diseases/surveillance.html"
+  },
+  {
+   "label": "CDC dengue data and statistics",
+   "url": "https://www.cdc.gov/dengue/data-research/facts-stats/index.html"
+  },
+  {
+   "label": "Virginia Department of Health clinician letter, 4 August 2026",
+   "url": "https://www.vdh.virginia.gov/clinicians/clinician-letters/vdh-identifies-a-locally-acquired-case-of-dengue-virus-infection-in-northern-virginia-resident/"
+  },
+  {
+   "label": "Temperatures: Open-Meteo ERA5 archive",
+   "url": "https://open-meteo.com/en/docs/historical-weather-api"
+  }
+ ],
+ "entries": [
+  {
+   "site": "Hillsborough County, Florida",
+   "year": 2026,
+   "cases": 310,
+   "verdict": "timing",
+   "headline": "Receptive window opened 30 days before the first case",
+   "observed": {
+    "first": "2026-07-19",
+    "peakMonth": "September",
+    "note": "28 weeks with no local case, then 310 cases; September onsets still being revised upward"
+   },
+   "model": {
+    "window": [
+     "2026-06-19",
+     "2026-08-22"
+    ],
+    "peak": 1.19,
+    "peakDate": "2026-08-14",
+    "daysAbove1": 20
+   },
+   "forecast": {
+    "window": null,
+    "peak": 0.78,
+    "peakDate": "2026-08-09",
+    "daysAbove1": 0
+   },
+   "lead": 30,
+   "lag": 32,
+   "comment": "The modelled risk peak came 32 days before the case peak, about the delay mosquito development, the extrinsic incubation period and reporting together require."
+  },
+  {
+   "site": "Brevard County, Florida",
+   "year": 2025,
+   "cases": 35,
+   "verdict": "timing",
+   "headline": "Window opened within about a week of the cluster",
+   "observed": {
+    "first": "2025-07-20",
+    "peakMonth": "August",
+    "note": "county advisory in week 29, alert in week 30; no further cases after late October"
+   },
+   "model": {
+    "window": [
+     "2025-07-29",
+     "2025-08-17"
+    ],
+    "peak": 1.1,
+    "peakDate": "2025-07-30",
+    "daysAbove1": 7
+   },
+   "forecast": {
+    "window": null,
+    "peak": 0.79,
+    "peakDate": "2025-08-09",
+    "daysAbove1": 0
+   },
+   "lead": -9,
+   "lag": 16,
+   "comment": "The window opened nine days after the first reported case rather than before it, so this is a close match on timing but not a lead."
+  },
+  {
+   "site": "Northern Virginia",
+   "year": 2026,
+   "cases": 1,
+   "verdict": "negative",
+   "headline": "Ruled out sustained transmission, and none followed",
+   "observed": {
+    "first": "2026-08-04",
+    "peakMonth": null,
+    "note": "Virginia's first locally acquired case: one mosquito bridged a returning traveller to a neighbour; health authorities reported no onward transmission"
+   },
+   "model": {
+    "window": null,
+    "peak": 0.0,
+    "peakDate": "2026-09-18",
+    "daysAbove1": 0
+   },
+   "forecast": null,
+   "lead": null,
+   "lag": null,
+   "comment": "Aedes aegypti cannot overwinter in Virginia and is not established there. The model cannot represent a single imported mosquito, but it was right that no chain could sustain itself."
+  },
+  {
+   "site": "Los Angeles County, California",
+   "year": 2024,
+   "cases": 18,
+   "verdict": "miss",
+   "headline": "Missed it: peak risk 0.17, far below the threshold",
+   "observed": {
+    "first": "2024-08-01",
+    "peakMonth": "October",
+    "note": "18 locally acquired cases across Baldwin Park, El Monte, Panorama City and Hollywood Hills"
+   },
+   "model": {
+    "window": null,
+    "peak": 0.17,
+    "peakDate": "2024-10-08",
+    "daysAbove1": 0
+   },
+   "forecast": null,
+   "lead": null,
+   "lag": null,
+   "comment": "Transmission there is driven by dense container habitat in a cooler climate, which this version of the model cannot see: breeding-site density is a fixed reference value everywhere."
+  },
+  {
+   "site": "Miami-Dade County, Florida",
+   "year": 2024,
+   "cases": 50,
+   "verdict": "context",
+   "headline": "Not a usable test: transmission ran all year",
+   "observed": {
+    "first": "2024-01-01",
+    "peakMonth": "September",
+    "note": "cases in 11 of 12 months statewide, from several separate introductions"
+   },
+   "model": {
+    "window": [
+     "2024-07-04",
+     "2024-10-01"
+    ],
+    "peak": 1.29,
+    "peakDate": "2024-08-02",
+    "daysAbove1": 60
+   },
+   "forecast": {
+    "window": [
+     "2024-08-05",
+     "2024-09-02"
+    ],
+    "peak": 1.14,
+    "peakDate": "2024-08-20",
+    "daysAbove1": 25
+   },
+   "lead": null,
+   "lag": null,
+   "comment": "With no case-free baseline there is no seasonal onset to anticipate, so this year can neither support nor undermine a timing claim."
+  }
+ ]
+}

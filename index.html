@@ -11,7 +11,7 @@
   <header class="page-head">
     <div class="head-main">
       <h1>Aedes Control planner</h1>
-      <p class="purpose">Test a mosquito-control schedule against your site's temperatures and see how modelled dengue transmission risk changes over the year.</p>
+      <p class="purpose">A within-season timing tool for sites where <i>Aedes aegypti</i> is established: test a control schedule against your site's temperatures and see when in the year modelled transmission risk is highest.</p>
     </div>
     <nav class="head-links" aria-label="About this tool">
       <a href="https://doi.org/10.1016/j.jtbi.2026.112617">Paper</a>
@@ -122,11 +122,13 @@
           </div>
         </section>
       </div>
+
+      <aside id="track-record" class="track-record" aria-labelledby="h-track" hidden></aside>
     </div>
 
     <section class="caveats" aria-labelledby="h-caveats">
       <h2 id="h-caveats">What this is</h2>
-      <p class="limitations">This is a planning aid. It shows how a schedule changes modelled mosquito numbers and transmission suitability for the temperatures you supplied. It does not forecast cases or outbreaks. The comparison between plans is more reliable than the absolute level of R0. Use it alongside local surveillance and judgement.</p>
+      <p class="limitations">This is a planning aid for a site where the mosquito is already established. It shows <b>when in the year</b> conditions favour transmission, and how a schedule changes that, for the temperatures you supplied. It does not forecast cases or outbreaks, and it cannot tell you whether your site will have one. Use the timing rather than the absolute level of R0: that level depends on a breeding-site density the model assumes rather than measures, so comparing plans at one site is far more reliable than comparing sites, or reading R0 = 1 as an alarm. Use it alongside local surveillance and judgement.</p>
       <details>
         <summary>About this model</summary>
         <dl class="about">

@@ -149,11 +149,55 @@ button.quiet:hover:not(:disabled) { background: var(--wash); }
   padding: var(--step-4) 0;
   align-items: start;
 }
+/* The track record becomes a third column only where the canvas can spare the
+   width; below that it stacks under the workbench rather than squeezing it. */
+@media (min-width: 1500px) {
+  .workspace { grid-template-columns: 320px minmax(0, 1fr) 300px; }
+}
+@media (max-width: 1499px) {
+  .track-record { grid-column: 1 / -1; }
+}
 @media (max-width: 1023px) {
   .workspace { grid-template-columns: minmax(0, 1fr); }
   .rail { order: 2; }
   .workbench { order: 1; }
+  .track-record { order: 3; }
 }
+
+/* -- track record --------------------------------------------------------- */
+
+.track-record h2 { margin-bottom: var(--step-2); }
+.case-claim { font-size: 14px; margin: 0 0 var(--step-2); }
+.case-caveat {
+  font-size: 13px; color: var(--ink-2); margin: 0 0 var(--step-3);
+  border-left: 3px solid var(--axis); padding-left: var(--step-2);
+}
+.case-list { display: grid; gap: var(--step-2); }
+@media (min-width: 1024px) and (max-width: 1499px) {
+  .case-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+}
+.case {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: var(--step-3); background: var(--surface);
+}
+.case-head { display: flex; flex-wrap: wrap; gap: var(--step-2); align-items: baseline; }
+.case-head h4 { margin: 0; font-size: 14px; }
+.case-verdict {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  text-transform: uppercase; padding: 2px var(--step-2);
+  border-radius: 999px; background: var(--wash); color: var(--ink-2);
+}
+.case-verdict.good { color: var(--better); }
+.case-verdict.bad { color: var(--worse); }
+.case-headline { font-size: 14px; margin: var(--step-2) 0; }
+.case-rows { margin: 0; font-size: 13px; }
+.case-rows dt { color: var(--ink-2); margin-top: var(--step-2); }
+.case-rows dd { margin: 0; }
+.case-note { font-size: 13px; color: var(--ink-2); margin: var(--step-2) 0 0; }
+.case-source { font-size: 12px; color: var(--ink-muted); margin: var(--step-1) 0 0; }
+.case-method { margin-top: var(--step-3); font-size: 13px; }
+.case-method summary { cursor: pointer; color: var(--accent); }
+.case-method ul { padding-left: var(--step-4); margin: var(--step-2) 0 0; }
 
 .rail h2 { margin-top: var(--step-5); }
 .rail h2:first-child { margin-top: 0; }
@@ -357,7 +401,8 @@ footer .cite { margin: var(--step-2) 0 0; max-width: 90ch; }
   body { background: #fff; color: #000; font-size: 11px; }
   .page-head { padding: 0 0 8px; }
   .head-links, .site-strip, .rail, .status-row, .views, .exports,
-  .table-view, .timeline-wrap .hint, footer, .readout, #message { display: none !important; }
+  .table-view, .timeline-wrap .hint, footer, .readout, #message,
+  .track-record { display: none !important; }
   main { padding: 0; }
   .workspace { display: block; }
   .hero-value { font-size: 28px; }

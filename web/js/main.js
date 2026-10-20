@@ -18,6 +18,7 @@ import {
   parseClimate, toCsv, selectYear, convertFahrenheit, templateCsv,
 } from "./climate.js";
 import { strings, MEASURE_NAMES } from "./strings.js";
+import { renderCaseStudies } from "./casestudies.js";
 import { addDays, fullDate, shortDate, r0 } from "./format.js";
 import {
   scheduleCsv, dailyCsv, desktopDateFiles, summaryText, metadataJson, figurePng,
@@ -597,6 +598,7 @@ function boot() {
   wireInputs();
   wireExports();
   showPrecomputedExample();
+  renderCaseStudies($("track-record"));
 
   engine = new Engine("web/worker.js", {
     onBoot: ({ done }) => set({ bootFiles: done }),
