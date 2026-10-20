@@ -1,0 +1,64 @@
+{
+  "comment": "Locally acquired dengue used by web/tools/make_casestudies.py. Florida counts are by county of EXPOSURE from FDOH weekly arbovirus reports (final or latest revision), cumulative by REPORT week; report week lags onset. Retrieved 2026-10-20.",
+  "cases": [
+    {
+      "id": "tampa_bay_2026",
+      "place": "Tampa Bay, Florida",
+      "year": 2026,
+      "lat": 27.9673, "lon": -82.3986,
+      "temperature_csv": "web/cases/tampa_bay_2026_january_forecast.csv",
+      "climatology_years": "2016-2025",
+      "local_cases": 347,
+      "local_cases_note": "Hillsborough 310 + Pinellas 37 of Florida's 368 locally acquired cases to 10 Oct 2026; the weekly series below is statewide (94% Tampa Bay).",
+      "first_case": "2026-07-19",
+      "first_case_note": "First locally acquired case reported in FDOH week 29 (19-25 Jul) after 28 weeks of zero.",
+      "cumulative_by_report_week": [
+        ["2026-07-25", 1], ["2026-08-01", 4], ["2026-08-08", 7], ["2026-08-15", 23],
+        ["2026-08-22", 41], ["2026-08-29", 73], ["2026-09-05", 111], ["2026-09-12", 152],
+        ["2026-09-19", 190], ["2026-09-26", 252], ["2026-10-03", 296], ["2026-10-10", 368]
+      ],
+      "censored_after": "2026-10-10",
+      "sources": [
+        {"label": "FDOH arbovirus surveillance, week 40 2026", "url": "https://www.floridahealth.gov/wp-content/uploads/2026/10/fl-arbovirus-report-w40-2026.pdf"},
+        {"label": "Hillsborough County local emergency, 24 Sep 2026", "url": "https://hcfl.gov/newsroom/2026/09/24/dengue-fever-prompts-hillsborough-county-to-declare-state-of-local-emergency"}
+      ]
+    },
+    {
+      "id": "brevard_2025",
+      "place": "Brevard County, Florida",
+      "year": 2025,
+      "lat": 28.2251, "lon": -80.6909,
+      "temperature_csv": "web/cases/brevard_2025_january_forecast.csv",
+      "climatology_years": "2015-2024",
+      "local_cases": 35,
+      "local_cases_note": "Brevard County, county of exposure, final 2025 total.",
+      "first_case": "2025-07-20",
+      "first_case_note": "First cases reported in the week of 20 Jul; DOH-Brevard issued its alert on 30 Jul on four confirmed local cases.",
+      "cumulative_by_report_week": [
+        ["2025-08-02", 6], ["2025-08-16", 11], ["2025-09-06", 19], ["2025-09-13", 27],
+        ["2025-09-27", 30], ["2025-10-25", 35]
+      ],
+      "censored_after": null,
+      "sources": [
+        {"label": "FDOH arbovirus surveillance, week 53 2025", "url": "https://www.floridahealth.gov/wp-content/uploads/2026/01/2025Week53ArbovirusReport_1-5-26-4.pdf"},
+        {"label": "DOH-Brevard mosquito-borne illness alert, 30 Jul 2025", "url": "https://brevard.floridahealth.gov/2025/07/30/doh-brevard-issues-mosquito-borne-illness-alert/"}
+      ]
+    },
+    {
+      "id": "northern_virginia_2026",
+      "place": "Northern Virginia",
+      "year": 2026,
+      "lat": 38.8447, "lon": -77.2591,
+      "temperature_csv": null,
+      "local_cases": 1,
+      "local_cases_note": "Virginia's first documented locally acquired dengue case; VDH reported no evidence of continued transmission.",
+      "first_case": "2026-08-04",
+      "first_case_note": "Announced 4 Aug 2026 (VDH clinician letter).",
+      "cumulative_by_report_week": [["2026-08-04", 1]],
+      "censored_after": null,
+      "sources": [
+        {"label": "VDH clinician letter, 4 Aug 2026", "url": "https://www.vdh.virginia.gov/clinicians/clinician-letters/vdh-identifies-a-locally-acquired-case-of-dengue-virus-infection-in-northern-virginia-resident/"}
+      ]
+    }
+  ]
+}

@@ -4,6 +4,10 @@
 vector control (larvicide, adulticide, breeding-site removal), driven by a
 temperature-dependent, non-Markovian model of the mosquito life cycle.
 
+**A within-season timing tool for places where *Aedes aegypti* is established:** when is
+the site's dengue high season, and how much does a control schedule lower it?
+Try it in the browser: <https://shakeri-lab.github.io/dengue-control-scheduler/>
+
 Code accompanying:
 
 > A. Vajdi, L. W. Cohnstaedt, C. M. Scoglio, H. Shakeri. *Optimal scheduling of dengue
@@ -29,6 +33,16 @@ the transmission-risk index (R0) before and after.
 - **Fixed schedule** — you give the dates; the application evaluates that plan.
 
 See [User_Manual.pdf](User_Manual.pdf) for the GUI.
+
+## Track record
+
+Run on temperatures knowable the January before, the model's high season (the days on
+which uncontrolled risk is at least half its annual peak) opened **41 days** before the
+first locally acquired case in Tampa Bay, Florida, in 2026 (347 cases), and **31 days**
+before it in Brevard County, Florida, in 2025 (35 cases); it gave Northern Virginia no
+high season, and the single locally acquired case there in 2026 produced no onward
+transmission. It says *when*, not *whether*. Method, misses and limits:
+[docs/track-record.md](docs/track-record.md).
 
 ## Install
 

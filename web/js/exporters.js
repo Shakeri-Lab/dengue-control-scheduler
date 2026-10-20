@@ -3,7 +3,7 @@
 import { download } from "./dom.js";
 import { MEASURES } from "./store.js";
 import { SETTING_KEYS } from "./plan.js";
-import { r0Precise, fullDate, addDays, shortDate, signedPercent } from "./format.js";
+import { r0Precise, fullDate, addDays } from "./format.js";
 import { MEASURE_NAMES, strings } from "./strings.js";
 
 const UNIT = {
@@ -63,18 +63,21 @@ export function desktopDateFiles(plan) {
     }));
 }
 
+const pctText = (value) => (Math.abs(value) < 0.5 ? "no change"
+  : `${value > 0 ? "+" : "−"}${Math.abs(value).toFixed(0)}%`);
+
 export function summaryText(data, site) {
   const { metrics, plan, settings, hasPlan, climate } = data;
+  const season = metrics.highSeason;
   const lines = [];
-  lines.push(`Aedes Control planner — ${site || climate.name}, ${climate.year}`);
+  lines.push(`Aedes Control — ${site || climate.name}`);
   lines.push("");
+  lines.push(season
+    ? `High season (risk at least half its peak): ${fullDate(season.from)} to ${fullDate(season.to)}, ${season.days} days.`
+    : "No high season: Aedes aegypti cannot persist at this site in the model.");
   if (hasPlan) {
-    lines.push(`Days with R0 above 1: ${metrics.daysAboveBefore} without control, ` +
-      `${metrics.daysAboveAfter} with this plan.`);
-    lines.push(`Highest R0: ${metrics.peakBefore.toFixed(2)} (${shortDate(metrics.peakDateBefore)}) ` +
-      `to ${metrics.peakAfter.toFixed(2)} (${shortDate(metrics.peakDateAfter)}).`);
-    lines.push(`Average R0 over the year: ${metrics.meanBefore.toFixed(2)} to ${metrics.meanAfter.toFixed(2)}.`);
-    lines.push(`Adult mosquitoes, yearly average: ${signedPercent(metrics.adultsChange)}.`);
+    lines.push(`With this plan: risk across the high season ${pctText(metrics.seasonChange)}, ` +
+      `peak risk ${pctText(metrics.peakChange)}, adult mosquitoes ${pctText(metrics.adultsChange)}.`);
     lines.push("");
     lines.push("Plan:");
     for (const measure of MEASURES) {
@@ -84,8 +87,7 @@ export function summaryText(data, site) {
         `${settings[duration]} days): ${plan[measure].map(fullDate).join("; ")}`);
     }
   } else {
-    lines.push(`No control scheduled. R0 is above 1 for ${metrics.daysAboveBefore} days; ` +
-      `highest ${metrics.peakBefore.toFixed(2)} on ${shortDate(metrics.peakDateBefore)}.`);
+    lines.push("No control scheduled.");
   }
   lines.push("");
   lines.push(strings.limitations);
@@ -96,8 +98,9 @@ export function summaryText(data, site) {
 
 export function metadataJson(data, extra) {
   const { plan, settings, climate, metrics, hasPlan } = data;
+  const season = metrics.highSeason;
   return JSON.stringify({
-    tool: "Aedes Control planner (web)",
+    tool: "Aedes Control (web)",
     generated_at: new Date().toISOString().slice(0, 19),
     model_sha: extra.modelSha,
     pyodide: extra.pyodide,
@@ -108,16 +111,19 @@ export function metadataJson(data, extra) {
     },
     settings,
     plan,
+    high_season: season ? { from: season.from, to: season.to, days: season.days,
+                            rule: "risk at least half its uncontrolled annual peak" } : null,
     outcomes: hasPlan ? {
-      days_above_1_without_control: metrics.daysAboveBefore,
-      days_above_1_with_plan: metrics.daysAboveAfter,
-      peak_r0_without_control: metrics.peakBefore,
-      peak_r0_with_plan: metrics.peakAfter,
-      mean_r0_without_control: metrics.meanBefore,
-      mean_r0_with_plan: metrics.meanAfter,
+      high_season_risk_change_percent: metrics.seasonChange,
+      peak_risk_change_percent: metrics.peakChange,
+      year_risk_change_percent: metrics.yearChange,
       adults_change_percent: metrics.adultsChange,
+      // The raw index, for comparison with the paper. Its level depends on an
+      // assumed breeding-site density; the relative figures above do not.
+      model_r0_peak_without_control: metrics.peakBefore,
+      model_r0_peak_with_plan: metrics.peakAfter,
     } : null,
-    note: "Modelled index, not a forecast of cases.",
+    note: "Timing and relative change from a temperature-driven model; not a forecast of cases.",
   }, null, 2);
 }
 

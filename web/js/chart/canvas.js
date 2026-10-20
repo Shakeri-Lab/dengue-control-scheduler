@@ -1,74 +1,77 @@
-/* The planner canvas: four lanes on one time axis, one crosshair, one readout.
+/* The planner chart: relative risk, the schedule directly beneath it, one shared
+   month axis, and optional driver lanes — all on one time scale with one
+   crosshair. The readout is a single quiet line, not a floating tooltip: a
+   finger hides a floating box, and a line survives printing. */
 
-   The readout is a pinned row above the lanes rather than a floating tooltip —
-   a finger hides a floating box, it survives print, and it keeps every value
-   reachable without hovering. */
-
-import { $, el, svg } from "../dom.js";
+import { el } from "../dom.js";
 import { Frame } from "./frame.js";
-import { riskLane, scheduleLane, adultsLane, temperatureLane } from "./lanes.js";
-import { r0, signedR0, celsius, fullDate, signedPercent } from "../format.js";
+import { riskLane, axisLane, adultsLane, temperatureLane } from "./lanes.js";
+import { celsius, fullDate } from "../format.js";
 import { strings, MEASURE_NAMES } from "../strings.js";
 import { activeOn } from "../plan.js";
 
+const pct = (value) => `${Math.round(value * 100)}%`;
+
 export class Canvas {
-  constructor(root, { onHover } = {}) {
+  constructor(root) {
     this.root = root;
     this.frame = new Frame();
     this.data = null;
-    this.onHover = onHover;
+    this.showDrivers = false;
     this.build();
     this.observer = new ResizeObserver(() => this.measure());
-    this.observer.observe(this.lanesHost);
+    this.observer.observe(this.lanes);
     this.frame.onHover(() => this.paintHover());
   }
 
   build() {
-    this.readout = el("div", { class: "readout", id: "readout", "aria-live": "off" });
-    this.lanesHost = el("div", { class: "lanes" });
-    this.hosts = {
-      risk: el("div", { class: "lane lane-risk" }),
-      schedule: el("div", { class: "lane lane-schedule" }),
-      adults: el("div", { class: "lane lane-adults" }),
-      temperature: el("div", { class: "lane lane-temperature" }),
-    };
+    this.readout = el("p", { class: "readout", "aria-live": "off" });
+    this.lanes = el("div", { class: "lanes" });
+    this.riskHost = el("div", { class: "lane lane-risk" });
+    this.scheduleHost = el("div", { class: "schedule", id: "schedule" });
+    this.axisHost = el("div", { class: "lane lane-axis" });
+    this.temperatureHost = el("div", { class: "lane" });
+    this.adultsHost = el("div", { class: "lane" });
+    this.drivers = el("div", { class: "drivers", hidden: true }, [
+      el("p", { class: "driver-label", text: strings.laneTemperature }),
+      this.temperatureHost,
+      el("p", { class: "driver-label", text: `${strings.laneAdults} — ${strings.adultsNote}` }),
+      this.adultsHost,
+    ]);
     this.crosshair = el("div", { class: "crosshair", hidden: true });
 
-    const labelled = (host, title, note) => el("div", { class: "lane-block" }, [
-      el("div", { class: "lane-head" }, [
-        el("h3", { text: title }),
-        note ? el("span", { class: "lane-note", text: note }) : null,
-      ]),
-      host,
-    ]);
+    this.lanes.append(this.riskHost, this.scheduleHost, this.axisHost, this.drivers, this.crosshair);
+    this.root.replaceChildren(this.lanes, this.readout);
 
-    this.lanesHost.append(
-      labelled(this.hosts.risk, strings.laneRisk),
-      labelled(this.hosts.schedule, strings.laneSchedule),
-      labelled(this.hosts.adults, strings.laneAdults, strings.adultsNote),
-      labelled(this.hosts.temperature, strings.laneTemperature, strings.temperatureNote),
-      this.crosshair,
-    );
-
-    this.root.replaceChildren(this.readout, this.lanesHost);
-
-    this.lanesHost.addEventListener("pointermove", (event) => this.pointerToHover(event));
-    this.lanesHost.addEventListener("pointerleave", () => this.frame.setHover(null));
-    this.lanesHost.addEventListener("pointerdown", (event) => this.pointerToHover(event));
+    this.lanes.addEventListener("pointermove", (event) => this.pointerToHover(event));
+    this.lanes.addEventListener("pointerleave", () => this.frame.setHover(null));
   }
 
   pointerToHover(event) {
     if (!this.data) return;
-    const box = this.hosts.risk.getBoundingClientRect();
+    const box = this.riskHost.getBoundingClientRect();
     const scale = this.frame.width / box.width;
     this.frame.setHover(this.frame.indexAt((event.clientX - box.left) * scale));
   }
 
   measure() {
-    const width = this.lanesHost.clientWidth;
+    const width = this.lanes.clientWidth;
     if (!width) return;
+    const before = this.frame.narrow;
     this.frame.setWidth(width);
-    if (this.data) this.render(this.data);
+    this.applyGeometry();
+    if (this.data) {
+      this.render(this.data);
+      if (before !== this.frame.narrow && this.onLayout) this.onLayout();
+    }
+  }
+
+  /** The schedule rows are HTML; share the chart's gutter and right edge with
+      them through CSS, and switch their layout when the chart is narrow. */
+  applyGeometry() {
+    this.root.style.setProperty("--gutter", `${this.frame.gutter}px`);
+    this.root.style.setProperty("--right", `${this.frame.rightPad}px`);
+    this.root.classList.toggle("narrow", Boolean(this.frame.narrow));
   }
 
   setWindow(from, to) {
@@ -76,18 +79,32 @@ export class Canvas {
     if (this.data) this.render(this.data);
   }
 
+  setDrivers(show) {
+    this.showDrivers = show;
+    this.drivers.hidden = !show;
+    if (this.data) this.render(this.data);
+  }
+
   render(data) {
     this.data = data;
-    if (!this.frame.dates.length || this.frame.dates !== data.dates) {
+    if (this.frame.dates !== data.dates) {
+      const resetWindow = this.frame.dates.length !== data.dates.length;
       this.frame.dates = data.dates;
-      if (this.frame.to === 0) this.frame.setWindow(0, data.dates.length - 1);
+      if (resetWindow || this.frame.to === 0) this.frame.setWindow(0, data.dates.length - 1);
     }
-    if (!this.frame.width) this.frame.setWidth(this.lanesHost.clientWidth || 900);
-
-    riskLane(this.hosts.risk, data, this.frame);
-    scheduleLane(this.hosts.schedule, data, this.frame);
-    if (data.adultsBefore) adultsLane(this.hosts.adults, data, this.frame);
-    if (data.temperature) temperatureLane(this.hosts.temperature, data, this.frame);
+    if (!this.frame.width || this.frame.width === 900) {
+      const width = this.lanes.clientWidth;
+      if (width) {
+        this.frame.setWidth(width);
+        this.applyGeometry();
+      }
+    }
+    riskLane(this.riskHost, data, this.frame);
+    axisLane(this.axisHost, this.frame);
+    if (this.showDrivers) {
+      if (data.temperature) temperatureLane(this.temperatureHost, data, this.frame);
+      if (data.adultsBefore) adultsLane(this.adultsHost, data, this.frame);
+    }
     this.paintHover();
   }
 
@@ -98,59 +115,53 @@ export class Canvas {
       this.renderReadout(-1);
       return;
     }
-    const box = this.hosts.risk.getBoundingClientRect();
-    const hostBox = this.lanesHost.getBoundingClientRect();
+    const box = this.riskHost.getBoundingClientRect();
+    const hostBox = this.lanes.getBoundingClientRect();
     const scale = box.width / this.frame.width;
     this.crosshair.hidden = false;
     this.crosshair.style.left = `${box.left - hostBox.left + this.frame.x(index) * scale}px`;
     this.renderReadout(index);
-    if (this.onHover) this.onHover(index);
   }
 
   renderReadout(index) {
     const data = this.data;
     if (!data || index < 0) {
-      this.readout.replaceChildren(
-        el("span", { class: "readout-hint", text: "Point at the chart, or use the arrow keys, to read a day." }),
-      );
+      this.readout.replaceChildren(el("span", {
+        class: "readout-hint",
+        text: "Point at the chart, or focus it and use the arrow keys, to read a day.",
+      }));
       return;
     }
-    const items = [];
-    const add = (label, value, strong) =>
-      items.push(el("span", { class: `readout-item${strong ? " strong" : ""}` }, [
-        el("span", { class: "readout-label", text: label }),
-        el("b", { text: value }),
-      ]));
-
-    add("Date", fullDate(data.dates[index]), true);
+    const peak = Math.max(...data.riskBefore) || 1;
+    const before = data.riskBefore[index] / peak;
+    const parts = [el("b", { text: fullDate(data.dates[index]) })];
     if (data.hasPlan) {
-      add("R0 with plan", r0(data.riskAfter[index]), true);
-      add("without control", r0(data.riskBefore[index]));
-      add("difference", signedR0(data.riskAfter[index] - data.riskBefore[index]));
+      const after = data.riskAfter[index] / peak;
+      parts.push(el("span", { text: `risk ${pct(before)} of peak → ` }),
+        el("b", { class: "plan-ink", text: `${pct(after)} with plan` }));
     } else {
-      add("R0 without control", r0(data.riskBefore[index]), true);
+      parts.push(el("span", { text: `risk ${pct(before)} of peak` }));
     }
-    const value = data.hasPlan ? data.riskAfter[index] : data.riskBefore[index];
-    add("", value > 1 ? "above 1" : "below 1");
-    if (data.adultsBefore) {
-      const change = (data.adultsAfter[index] / data.adultsBefore[index] - 1) * 100;
-      add("Adults", data.hasPlan ? signedPercent(change) : "—");
+    if (data.temperature && Number.isFinite(data.temperature[index])) {
+      parts.push(el("span", { text: celsius(data.temperature[index]) }));
     }
-    if (data.temperature) add("Temperature", celsius(data.temperature[index]));
-
-    const active = activeOn(data.plan, data.settings, data.dates, index);
-    for (const entry of active) {
-      add(MEASURE_NAMES[entry.measure], entry.text);
+    for (const entry of activeOn(data.plan, data.settings, data.dates, index)) {
+      parts.push(el("span", { text: `${MEASURE_NAMES[entry.measure]} ${entry.text}` }));
     }
-    this.readout.replaceChildren(...items);
+    const nodes = [];
+    parts.forEach((part, i) => {
+      if (i) nodes.push(el("span", { class: "sep", text: "·", "aria-hidden": "true" }));
+      nodes.push(part);
+    });
+    this.readout.replaceChildren(...nodes);
   }
 
-  /** Keyboard reading: day, week, month, ends, and threshold crossings. */
+  /** Keyboard reading: day, week, month, ends, and the high-season edges. */
   handleKey(event) {
     if (!this.data) return false;
     const { key, shiftKey } = event;
     const current = this.frame.hover < 0 ? this.frame.from : this.frame.hover;
-    const values = this.data.hasPlan ? this.data.riskAfter : this.data.riskBefore;
+    const season = this.data.metrics && this.data.metrics.highSeason;
     let next = null;
     if (key === "ArrowRight") next = current + (shiftKey ? 7 : 1);
     else if (key === "ArrowLeft") next = current - (shiftKey ? 7 : 1);
@@ -158,15 +169,8 @@ export class Canvas {
     else if (key === "PageUp") next = current - 30;
     else if (key === "Home") next = this.frame.from;
     else if (key === "End") next = this.frame.to;
-    else if (key === "]" || key === "[") {
-      const step = key === "]" ? 1 : -1;
-      let probe = current + step;
-      while (probe > this.frame.from && probe < this.frame.to) {
-        if ((values[probe] > 1) !== (values[probe - step] > 1)) { next = probe; break; }
-        probe += step;
-      }
-      if (next === null) next = step > 0 ? this.frame.to : this.frame.from;
-    }
+    else if (key === "[" && season) next = season.first;
+    else if (key === "]" && season) next = season.last;
     if (next === null) return false;
     event.preventDefault();
     this.frame.setHover(next);

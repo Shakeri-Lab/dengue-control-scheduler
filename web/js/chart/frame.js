@@ -32,10 +32,19 @@ export class Frame {
   }
 
   setWidth(width) {
-    const narrow = width < 560;
+    // The gutter holds the schedule rows' labels as well as the risk axis, so
+    // every lane — chart, schedule, axis — shares one left edge. On a phone
+    // the schedule labels move above their tracks and the gutter shrinks.
+    const narrow = width < 640;
     this.width = width;
-    this.gutter = narrow ? 34 : 44;
+    this.gutter = narrow ? 44 : 148;
+    this.rightPad = narrow ? 8 : 16;
     this.narrow = narrow;
+  }
+
+  /** Day index -> x within the plot area only (0 .. plotWidth). */
+  px(index) {
+    return (this.plotWidth * (index - this.from)) / this.span;
   }
 
   setHover(index) {

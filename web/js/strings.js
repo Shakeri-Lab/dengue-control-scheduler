@@ -7,11 +7,21 @@ export const MEASURE_NAMES = {
   habitat: "Breeding-site removal",
 };
 
+/** For the schedule rows, where the label shares a narrow gutter with its
+    settings; the full name stays in every accessible label and popover. */
+export const SHORT_NAMES = {
+  larvicide: "Larvicide",
+  adulticide: "Adulticide",
+  habitat: "Breeding sites",
+};
+
 export const strings = {
-  title: "Aedes Control planner",
+  title: "Aedes Control",
+  headline: "When is your site’s dengue high season — and how much does a control plan lower it?",
   purpose:
-    "Test a mosquito-control schedule against your site's temperatures and see how " +
-    "modelled dengue transmission risk changes over the year.",
+    "A within-season timing tool for places where Aedes aegypti is established. From " +
+    "temperature alone it shows when transmission risk peaks at your site, and how much a " +
+    "schedule of larvicide, adulticide or breeding-site removal brings it down.",
   privacy: "Your file is read on this device. It is never uploaded.",
 
   // Site strip
@@ -31,7 +41,7 @@ export const strings = {
   bootStart: "Preparing the model on this device. The first visit downloads about 30 MB; " +
     "later visits start faster. You can explore the example meanwhile.",
   bootProgress: (done) => `Preparing the model on this device — ${done} files loaded.`,
-  exampleWhileLoading: "The example below is precomputed; you can change the plan once it is ready.",
+  exampleWhileLoading: "The example below is precomputed.",
   ready: "Model ready.",
   readyMemo: "Model ready. Changes to the plan update the results in a few seconds.",
   firstRun: "Calculating the year without control — about 30 seconds.",
@@ -43,14 +53,17 @@ export const strings = {
     `This device needs about ${n} s per update, so results now update when you choose “Update results”.`,
 
   // Canvas
-  laneRisk: "Transmission risk index (R0)",
+  laneRisk: "Transmission risk",
+  riskAxis: "% of this site’s peak without control",
+  highSeason: "High season",
+  highSeasonRule: "risk at least half its peak",
   laneSchedule: "Control schedule",
   laneAdults: "Adult female mosquitoes (modelled)",
   laneTemperature: "Daily temperature (°C)",
   r0Explained:
-    "R0 is a modelled index of how easily dengue could spread if the virus were introduced " +
-    "that day. Above 1, spread can sustain itself. It is not a prediction of cases.",
-  thresholdLabel: "R0 = 1",
+    "Risk is the model’s transmission index (R0) as a share of its peak without control. " +
+    "The shape of the season comes from temperature alone; the absolute level depends on a " +
+    "breeding-site density the model assumes, so it is not shown.",
   seriesBaseline: "Without control",
   seriesPlan: "With this plan",
   bandLabel: "Reduction from this plan",
@@ -58,18 +71,19 @@ export const strings = {
     "Model units for a reference city. Read the shape and the percentage change, not the count.",
   temperatureNote: "drives the season",
   viewFullYear: "Full year",
-  viewSeason: "Risk season",
+  viewSeason: "High season",
+  showDrivers: "Show temperature and mosquito numbers",
+  hideDrivers: "Hide temperature and mosquito numbers",
 
-  neverAbove: "R0 stays below 1 all year at this site in this model.",
-  alwaysAbove: "R0 is above 1 all year.",
+  noSeason: "No high season: Aedes aegypti cannot persist at this site in the model.",
 
   // Outcomes
-  heroLabel: "Days with R0 above 1",
-  tilePeak: "Highest R0 of the year",
-  tileMean: "Average R0 over the year",
-  tileMeanNote: "the quantity the desktop search minimises",
-  tileAdults: "Adult mosquitoes, yearly average",
-  tileAdultsNote: "compared with no control",
+  figureSeason: "High season",
+  figureSeasonNote: (days) => `${days} days at or above half the peak`,
+  figureSeasonRisk: "Risk across the high season",
+  figurePeak: "Peak risk",
+  figureWithPlan: "with this plan",
+  figureNoPlan: "Add a treatment to see its effect",
   noChange: "No change",
 
   // Plan
@@ -130,10 +144,9 @@ export const strings = {
 
   // Limitations and provenance
   limitations:
-    "This is a planning aid. It shows how a schedule changes modelled mosquito numbers and " +
-    "transmission suitability for the temperatures you supplied. It does not forecast cases " +
-    "or outbreaks. The comparison between plans is more reliable than the absolute level of " +
-    "R0. Use it alongside local surveillance and judgement.",
+    "A planning aid for places where Aedes aegypti is already established. It says when in " +
+    "the year conditions favour transmission, and how much a schedule lowers that — not " +
+    "whether an outbreak will happen. Use it alongside local surveillance and judgement.",
   aboutHeading: "About this model",
   includes:
     "Temperature-dependent development, survival and egg-laying of Aedes aegypti from egg to " +
@@ -157,12 +170,22 @@ export const strings = {
     `${measure} added, ${date}, active until ${until}. Updating results.`,
   announceMoved: (measure, date) => `${measure} moved to ${date}. Updating results.`,
   announceRemoved: (measure, date) => `${measure} on ${date} removed.`,
-  announceResults: (before, after, peakBefore, peakAfter) =>
-    `Results updated. Days with R0 above 1: ${before} without control, ${after} with this plan. ` +
-    `Highest R0: ${peakBefore} to ${peakAfter}.`,
+  announceResults: (season, peak) =>
+    `Results updated. Risk across the high season ${season}; peak risk ${peak}.`,
   blockName: (measure, date, until) => `${measure}, ${date}, active until ${until}`,
   blockNameHabitat: (measure, date, days) =>
     `${measure}, ${date}, sites recover over about ${days} days`,
   blockHint:
     "Press Enter for options. Arrow keys move by one day, with Shift by one week. Delete removes.",
+
+  // Track record
+  trackHeading: "Track record",
+  trackLede: "Forecasts made from temperatures knowable the January before, checked against " +
+    "the locally acquired cases that followed.",
+  trackOpen: "Open in planner",
+  trackCases: "local cases, cumulative",
+  trackForecast: "January forecast",
+  trackFine: "It says when, not whether: the model marks a high season wherever the " +
+    "mosquito is established, whether or not an outbreak follows.",
+  trackMethods: "Methods and full results",
 };

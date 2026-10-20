@@ -12,14 +12,14 @@ import { Engine } from "./engine.js";
 import { Canvas } from "./chart/canvas.js";
 import { Timeline } from "./timeline.js";
 import {
-  renderOutcomes, renderSettings, renderPlanTable, renderDataTable, openPopover, closePopover,
+  renderFigures, openSettings, renderPlanTable, renderDataTable, openPopover,
 } from "./panels.js";
+import { renderCaseStudies } from "./casestudies.js";
 import {
   parseClimate, toCsv, selectYear, convertFahrenheit, templateCsv,
 } from "./climate.js";
 import { strings, MEASURE_NAMES } from "./strings.js";
-import { renderCaseStudies } from "./casestudies.js";
-import { addDays, fullDate, shortDate, r0 } from "./format.js";
+import { addDays, fullDate, shortDate } from "./format.js";
 import {
   scheduleCsv, dailyCsv, desktopDateFiles, summaryText, metadataJson, figurePng,
 } from "./exporters.js";
@@ -75,6 +75,7 @@ function viewData(state) {
     settings: state.settings,
     climate: state.climate,
     hasPlan,
+    resultHasPlan: result.hasPlan !== undefined ? result.hasPlan : hasPlan,
     stale: state.pending,
     metrics: computeMetrics(result.series),
   };
@@ -86,40 +87,31 @@ function render(state) {
   const data = viewData(state);
 
   $("status").textContent = statusText(state);
-  $("status-row").classList.toggle("busy", state.pending);
+  $("status").classList.toggle("busy", state.pending);
   $("undo").disabled = !canUndo();
   $("redo").disabled = !canRedo();
   $("auto-update").checked = state.autoUpdate;
   $("update-now").hidden = state.autoUpdate && !state.pending;
 
   const hasClimate = Boolean(state.climate);
-  $("workspace").hidden = !hasClimate;
-  $("example-tag").hidden = !(state.climate && state.climate.isExample);
-  $("use-example").disabled = Boolean(state.loadingClimate);
+  $("planner").hidden = !hasClimate && !state.loadingClimate;
+  $("site-name").textContent = hasClimate ? (state.climate.summary || state.climate.name)
+    : (state.loadingClimate || "");
+  $("example-tag").hidden = !(hasClimate && state.climate.isExample);
 
-  if (hasClimate) {
-    $("site-summary").textContent = state.climate.summary || "";
-  } else if (state.loadingClimate) {
-    $("site-summary").textContent = state.loadingClimate;
+  if (data) {
+    // The canvas fixes the time window and geometry the schedule rows align to.
+    canvas.render(data);
+    renderFigures($("figures"), data);
+    renderDataTable($("data-table"), data);
   }
   if (hasClimate) {
     if (!timeline) setupEditors();
-    timeline.render(state.plan, state.settings, state.climate.dates);
+    timeline.render(state.plan, state.settings, state.climate.dates, data && data.forcing);
     renderPlanTable($("plan-table"), state.plan, state.settings, {
       onRemove: removeApplication,
       onAdd: (measure, date, touch, anchor) => addApplication(measure, date, touch, anchor),
     });
-    renderSettings($("measure-settings"), state.settings, changeSetting);
-  }
-
-  if (data) {
-    canvas.render(data);
-    renderOutcomes($("outcomes"), data);
-    renderDataTable($("data-table"), data);
-    $("results").hidden = false;
-    $("exports").hidden = false;
-  } else {
-    $("results").hidden = !hasClimate;
   }
 
   const message = state.message;
@@ -214,7 +206,9 @@ function applyResult(payload, key) {
   // file has to compute the warm-up and the no-control year as well.
   if (payload.timing && payload.timing.reused > 0) lastRunMs = payload.timing.total * 1000;
   const series = seriesFrom(payload, state);
-  const result = { key, series, timing: payload.timing };
+  // Remember whether this result was computed with a plan, so the figures
+  // never describe the effect of a plan that has not been simulated yet.
+  const result = { key, series, timing: payload.timing, hasPlan: !isEmptyPlan(state.plan) };
   set({ result, pending: false, message: null });
 
   if (lastRunMs > SLOW_UPDATE_MS && state.autoUpdate && payload.timing.reused > 0) {
@@ -223,10 +217,8 @@ function applyResult(payload, key) {
   }
   const data = viewData(getState());
   if (data && data.hasPlan) {
-    announce(strings.announceResults(
-      data.metrics.daysAboveBefore, data.metrics.daysAboveAfter,
-      r0(data.metrics.peakBefore), r0(data.metrics.peakAfter),
-    ));
+    const pct = (v) => (Math.abs(v) < 0.5 ? "unchanged" : `${v > 0 ? "up" : "down"} ${Math.abs(v).toFixed(0)}%`);
+    announce(strings.announceResults(pct(data.metrics.seasonChange), pct(data.metrics.peakChange)));
   }
 }
 
@@ -236,7 +228,7 @@ function addApplication(measure, date, touch, anchor) {
   const state = getState();
   const dates = state.climate.dates;
   openPopover({
-    anchor, measure, date, dates,
+    anchor, measure, date, dates, isNew: true,
     onCommit: (chosen) => commitAdd(measure, chosen),
     onRemove: () => {},
     onSeries: (start, interval, times) => {
@@ -261,6 +253,8 @@ function commitAdd(measure, date) {
     return;
   }
   edit({ plan: outcome.plan }, `${MEASURE_NAMES[measure]} ${shortDate(date)}`);
+  const added = document.querySelector(`.tl-block[data-measure="${measure}"][data-date="${date}"]`);
+  if (added) added.focus();
   const duration = state.settings[SETTING_KEYS[measure].duration];
   announce(strings.announceAdded(MEASURE_NAMES[measure], fullDate(date),
     fullDate(addDays(date, Math.round(duration)))));
@@ -415,19 +409,12 @@ function setView(view) {
   const state = getState();
   if (!state.climate) return;
   const data = viewData(state);
-  const dates = state.climate.dates;
-  if (view === "season" && data) {
-    const runs = data.metrics.runsBefore;
-    if (runs.length) {
-      const from = Math.max(0, runs[0][0] - 30);
-      const to = Math.min(dates.length - 1, runs[runs.length - 1][1] + 30);
-      canvas.setWindow(from, to);
-    } else {
-      const peak = data.riskBefore.indexOf(data.metrics.peakBefore);
-      canvas.setWindow(Math.max(0, peak - 60), Math.min(dates.length - 1, peak + 60));
-    }
+  const last = state.climate.dates.length - 1;
+  const season = data && data.metrics.highSeason;
+  if (view === "season" && season) {
+    canvas.setWindow(Math.max(0, season.first - 21), Math.min(last, season.last + 21));
   } else {
-    canvas.setWindow(0, dates.length - 1);
+    canvas.setWindow(0, last);
   }
   set({ view });
   for (const button of document.querySelectorAll("[data-view]")) {
@@ -436,9 +423,9 @@ function setView(view) {
 }
 
 function setupEditors() {
-  timeline = new Timeline($("timeline"), canvas.frame, {
+  timeline = new Timeline(canvas.scheduleHost, canvas.frame, {
     onMove: moveApplication,
-    onAdd: (measure, date, touch) => addApplication(measure, date, touch, null),
+    onAdd: (measure, date, touch, anchor) => addApplication(measure, date, touch, anchor),
     onRemove: removeApplication,
     onOpen: (measure, date, anchor) => {
       const state = getState();
@@ -454,6 +441,9 @@ function setupEditors() {
         },
       });
     },
+    onSettings: (measure, anchor) => openSettings({
+      anchor, measure, settings: getState().settings, onChange: changeSetting,
+    }),
     onRefresh: () => render(getState()),
   });
 }
@@ -471,7 +461,7 @@ function wireExports() {
   $("export-daily").onclick = () =>
     download("daily_results.csv", dailyCsv(data()), "text/csv");
   $("export-summary").onclick = async () => {
-    const text = summaryText(data(), $("site-name").value);
+    const text = summaryText(data(), $("export-site").value);
     try { await navigator.clipboard.writeText(text); announce("Summary copied."); }
     catch (_) { download("summary.txt", text, "text/plain"); }
   };
@@ -483,7 +473,7 @@ function wireExports() {
   };
   $("export-figure").onclick = async () => {
     try {
-      const caption = `${$("site-name").value || getState().climate.name} · ${stamp()} · Modelled index, not a forecast of cases.`;
+      const caption = `${$("export-site").value || getState().climate.name} · ${stamp()} · Timing and relative change from a temperature-driven model; not a forecast of cases.`;
       const blob = await figurePng(document.querySelector(".lanes"), caption);
       const url = URL.createObjectURL(blob);
       const anchor = el("a", { href: url, download: "aedes_control_figure.png" });
@@ -524,9 +514,11 @@ function wireInputs() {
     if (file) useClimateText(await file.text(), file.name);
   });
 
-  $("use-example").onclick = async () => {
-    const text = await fetch("sample_climate_csv/sample_temperature_2026.csv").then((r) => r.text());
-    await useClimateText(text, "sample_temperature_2026.csv", { isExample: true });
+  $("drivers-toggle").onclick = (event) => {
+    const show = !canvas.showDrivers;
+    canvas.setDrivers(show);
+    event.currentTarget.textContent = show ? strings.hideDrivers : strings.showDrivers;
+    event.currentTarget.setAttribute("aria-expanded", String(show));
   };
 
   $("template").onclick = () => {
@@ -569,7 +561,7 @@ async function showPrecomputedExample() {
   try {
     const [example, csv] = await Promise.all([
       fetch("web/example.json").then((r) => r.json()),
-      fetch("sample_climate_csv/sample_temperature_2026.csv").then((r) => r.text()),
+      fetch("web/cases/tampa_bay_2026_january_forecast.csv").then((r) => r.text()),
     ]);
     if (getState().climate || pendingClimate) return;   // the user got there first
     const series = example.series;
@@ -580,11 +572,12 @@ async function showPrecomputedExample() {
         name: example.name, csv, key: example.climateKey, year: example.year,
         dates: series.dates, temperature: series.temperature,
         isExample: true, precomputed: true,
-        summary: `${example.name} · ${example.year} · ${series.dates.length} days`,
+        summary: example.name,
       },
       settings: example.settings,
       plan: example.plan,
-      result: { key: "example", series: { ...series, larvaeBefore: [], larvaeAfter: [], applied: example.plan }, timing: null },
+      result: { key: "example", series: { ...series, larvaeBefore: [], larvaeAfter: [], applied: example.plan },
+                timing: null, hasPlan: !isEmptyPlan(example.plan) },
     });
     canvas.frame.setDates(series.dates);
     render(getState());
@@ -593,12 +586,47 @@ async function showPrecomputedExample() {
   }
 }
 
+/** Open a track-record case: its January forecast temperatures, no plan, and
+    the model's precomputed no-control run so the chart appears at once. */
+async function openCase(entry) {
+  const csv = await fetch(entry.temperature_csv).then((r) => r.text());
+  const model = entry.model;
+  const climateKey = `case:${entry.id}`;
+  const series = {
+    dates: model.dates,
+    temperature: model.temperature,
+    riskBefore: model.risk_before, riskAfter: model.risk_before,
+    adultsBefore: model.adults_before, adultsAfter: model.adults_before,
+    larvaeBefore: [], larvaeAfter: [], forcing: null,
+    applied: { larvicide: [], adulticide: [], habitat: [] },
+  };
+  pendingClimate = null;
+  currentKey = null;
+  set({
+    climate: {
+      name: `${entry.place} · ${entry.year} · January forecast`, csv, key: climateKey,
+      year: entry.year, dates: model.dates, temperature: model.temperature,
+      isExample: true, caseId: entry.id,
+    },
+    plan: { larvicide: [], adulticide: [], habitat: [] },
+    settings: { ...DEFAULT_SETTINGS },
+    result: { key: "case", series, timing: null, hasPlan: false },
+    pending: false, message: null, loadingClimate: null,
+  });
+  canvas.frame.setDates(model.dates);
+  canvas.setWindow(0, model.dates.length - 1);
+  set({ view: "year" });
+  $("planner").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  announce(`${entry.place} ${entry.year} opened in the planner. Add a treatment to see its effect.`);
+}
+
 function boot() {
   canvas = new Canvas($("canvas"));
   wireInputs();
   wireExports();
   showPrecomputedExample();
-  renderCaseStudies($("track-record"));
+  renderCaseStudies($("track-record"), openCase);
+  canvas.onLayout = () => render(getState());
 
   engine = new Engine("web/worker.js", {
     onBoot: ({ done }) => set({ bootFiles: done }),

@@ -29,7 +29,8 @@ SETTINGS = {"ls_ef": 0.05, "len_lr": 15, "is_ef": 0.05, "len_ins": 2,
 PLAN = {"larvicide": ["2026-06-25"],
         "adulticide": ["2026-07-20", "2026-08-05"],
         "habitat": ["2026-07-09"]}
-CSV = os.path.join(ROOT, "sample_climate_csv", "sample_temperature_2026.csv")
+CSV = os.path.join(ROOT, "web", "cases", "tampa_bay_2026_january_forecast.csv")
+NAME = "Tampa Bay, Florida · 2026 · January forecast"
 
 
 def numbers(text):
@@ -62,7 +63,8 @@ def main():
     by_date = dict(zip(climate["dates"], climate["temperature"]))
 
     payload = {
-        "name": os.path.basename(CSV),
+        "name": NAME,
+        "caseId": "tampa_bay_2026",
         "year": climate["year"],
         "climateKey": climate["climateKey"],
         "settings": SETTINGS,

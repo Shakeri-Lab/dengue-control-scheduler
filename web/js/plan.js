@@ -2,7 +2,7 @@
    read off a result. No DOM, so these are the parts worth trusting. */
 
 import { MEASURES, LIMITS } from "./store.js";
-import { addDays, daysBetween, runsWhere } from "./format.js";
+import { addDays, daysBetween } from "./format.js";
 
 export const DATES_KEY = {
   larvicide: "larvicide_dates",
@@ -109,30 +109,48 @@ export function clampSetting(key, value) {
 
 const mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
 
+/** The share of the site's own uncontrolled peak that counts as high season. */
+export const HIGH_SEASON = 0.5;
+
+/**
+ * Everything reported is relative to the site's own uncontrolled peak.
+ *
+ * The model's R0 is exactly linear in a breeding-site density it assumes rather
+ * than measures, so its absolute level — and any count of days above R0 = 1 —
+ * moves with that assumption. Ratios do not: scaling the density by 0.7 or 1.3
+ * scales the curve by exactly that factor, leaving the shape of the season and
+ * a plan's relative effect unchanged. So timing comes from the shape, and a
+ * plan's effect is a percentage.
+ */
 export function metrics(series) {
   const { dates, riskBefore, riskAfter, adultsBefore, adultsAfter } = series;
-  const peakIndexBefore = riskBefore.indexOf(Math.max(...riskBefore));
-  const peakIndexAfter = riskAfter.indexOf(Math.max(...riskAfter));
-  const above = (values) => runsWhere(values, (value) => value > 1);
-  const runsBefore = above(riskBefore);
-  const runsAfter = above(riskAfter);
-  const days = (runs) => runs.reduce((sum, [from, to]) => sum + (to - from + 1), 0);
+  const peakBefore = Math.max(...riskBefore);
+  const peakAfter = Math.max(...riskAfter);
+  const cut = HIGH_SEASON * peakBefore;
+
+  let first = -1;
+  let last = -1;
+  riskBefore.forEach((value, index) => {
+    if (value >= cut) {
+      if (first < 0) first = index;
+      last = index;
+    }
+  });
+  const hasSeason = first >= 0 && peakBefore > 1e-6;
+  const inSeason = (values) => (hasSeason ? values.slice(first, last + 1) : values);
+  const change = (after, before) => (before > 0 ? (after / before - 1) * 100 : 0);
 
   return {
-    daysAboveBefore: days(runsBefore),
-    daysAboveAfter: days(runsAfter),
-    runsBefore, runsAfter,
-    peakBefore: riskBefore[peakIndexBefore],
-    peakAfter: riskAfter[peakIndexAfter],
-    peakDateBefore: dates[peakIndexBefore],
-    peakDateAfter: dates[peakIndexAfter],
-    meanBefore: mean(riskBefore),
-    meanAfter: mean(riskAfter),
-    adultsChange: (mean(adultsAfter) / mean(adultsBefore) - 1) * 100,
-    seasonBefore: runsBefore.length
-      ? [dates[runsBefore[0][0]], dates[runsBefore[runsBefore.length - 1][1]]] : null,
-    seasonAfter: runsAfter.length
-      ? [dates[runsAfter[0][0]], dates[runsAfter[runsAfter.length - 1][1]]] : null,
+    peakBefore, peakAfter,
+    peakDateBefore: dates[riskBefore.indexOf(peakBefore)],
+    peakDateAfter: dates[riskAfter.indexOf(peakAfter)],
+    highSeason: hasSeason ? { first, last, from: dates[first], to: dates[last], days: last - first + 1 } : null,
+    peakChange: change(peakAfter, peakBefore),
+    seasonChange: change(mean(inSeason(riskAfter)), mean(inSeason(riskBefore))),
+    yearChange: change(mean(riskAfter), mean(riskBefore)),
+    adultsChange: change(mean(adultsAfter), mean(adultsBefore)),
+    // Days the plan keeps above the high-season line: relative, so trustworthy.
+    seasonDaysAfter: hasSeason ? riskAfter.filter((value) => value >= cut).length : 0,
   };
 }
 
