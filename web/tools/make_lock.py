@@ -8,7 +8,7 @@ from a cache that was reasoned about for the old code.
 Run this only after tests/test_web_memo.py passes:
 
     uv run --python 3.12 --with numpy,scipy,pandas,pytest python -m pytest tests/test_web_memo.py
-    uv run --python 3.12 python web/tools/make_lock.py
+    uv run --python 3.12 --with numpy,scipy,pandas python web/tools/make_lock.py
 """
 import json
 import os
